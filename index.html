@@ -3886,9 +3886,25 @@ function renderFavsGrid() {
 //  SEARCH
 // ══════════════════════════════════════════════
 function handleSearch() {
-  renderGridGames();
-  renderPopularRow();
-  renderMineRow();
+  const q = document.getElementById('searchInput').value.trim();
+  if (q) {
+    const homeView = document.getElementById('view-home');
+    if (homeView && homeView.style.display === 'none') {
+      document.querySelectorAll('[id^="view-"]').forEach(v => v.style.display = 'none');
+      homeView.style.display = '';
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.nav-btn')[0]?.classList.add('active');
+    }
+    renderGridGames();
+    renderPopularRow();
+    setTimeout(() => {
+      document.getElementById('gamesGrid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  } else {
+    renderGridGames();
+    renderPopularRow();
+    renderMineRow();
+  }
 }
 
 // ══════════════════════════════════════════════
