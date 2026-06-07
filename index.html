@@ -2921,13 +2921,27 @@ let heroSlideTimer = null;
 //  INIT
 // ══════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async () => {
-  // Siempre cerrar sesión al abrir la app y pedir login
-  try { await sb.auth.signOut(); } catch(e) {}
-  currentUser = null;
-  localStorage.removeItem(PROFILE_KEY);
-  profile = { username: '', title: 'Game Designer', bio: '', country: '', avatarEmoji: '🎮', cardTheme: 1 };
-  applyProfileToUI();
-  openAuthModal();
+  // Verificar si ya hay una sesión activa
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session?.user) {
+      // Sesión existente: restaurar usuario y perfil
+      handleAuthUser(session.user);
+      applyProfileToUI();
+    } else {
+      // No hay sesión: resetear perfil y pedir login
+      currentUser = null;
+      profile = { username: '', title: 'Game Designer', bio: '', country: '', avatarEmoji: '🎮', cardTheme: 1 };
+      applyProfileToUI();
+      openAuthModal();
+    }
+  } catch(e) {
+    // Si falla, pedir login de todas formas
+    currentUser = null;
+    profile = { username: '', title: 'Game Designer', bio: '', country: '', avatarEmoji: '🎮', cardTheme: 1 };
+    applyProfileToUI();
+    openAuthModal();
+  }
 
   // Mostrar indicador de carga
   toast('🔄 Cargando juegos...', 'info');
