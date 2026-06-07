@@ -4460,6 +4460,33 @@ async function saveProfile() {
   // Guardar en tabla profiles de Supabase
   if (currentUser) {
     try {
+      // Si hay imagen nueva en base64, subirla a Storage primero
+      let avatarUrl = profile.avatarUrl || null; // URL pública ya guardada antes
+      if (profile.avatarImage && profile.avatarImage.startsWith('data:')) {
+        // Convertir base64 a Blob
+        const res = await fetch(profile.avatarImage);
+        const blob = await res.blob();
+        const ext = blob.type === 'image/png' ? 'png' : 'jpg';
+        const filePath = `avatars/${currentUser.id}.${ext}`;
+        const { error: uploadErr } = await sb.storage
+          .from('avatars')
+          .upload(filePath, blob, { upsert: true, contentType: blob.type });
+        if (uploadErr) {
+          console.warn('Error subiendo imagen:', uploadErr);
+        } else {
+          const { data: urlData } = sb.storage.from('avatars').getPublicUrl(filePath);
+          avatarUrl = urlData.publicUrl;
+          // Forzar cache-bust con timestamp
+          avatarUrl = avatarUrl + '?t=' + Date.now();
+          profile.avatarUrl = avatarUrl;
+          saveProfileData();
+        }
+      } else if (!profile.avatarImage) {
+        // Se quitó la imagen
+        avatarUrl = null;
+        profile.avatarUrl = null;
+      }
+
       const { error } = await sb.from('profiles').upsert({
         id: currentUser.id,
         username: profile.username,
@@ -4467,6 +4494,7 @@ async function saveProfile() {
         bio: profile.bio,
         country: profile.country,
         avatar_emoji: profile.avatarEmoji,
+        avatar_url: avatarUrl,
         card_theme: profile.cardTheme,
         updated_at: new Date().toISOString()
       }, { onConflict: 'id' });
@@ -4481,13 +4509,20 @@ async function loadProfileFromSupabase(userId) {
   try {
     const { data, error } = await sb.from('profiles').select('*').eq('id', userId).single();
     if (data && !error) {
-      if (data.username)    profile.username    = data.username;
-      if (data.title)       profile.title       = data.title;
-      if (data.bio)         profile.bio         = data.bio;
-      if (data.country)     profile.country     = data.country;
+      if (data.username)     profile.username    = data.username;
+      if (data.title)        profile.title       = data.title;
+      if (data.bio)          profile.bio         = data.bio;
+      if (data.country)      profile.country     = data.country;
       if (data.avatar_emoji) profile.avatarEmoji = data.avatar_emoji;
-      if (data.avatar_image) profile.avatarImage = data.avatar_image;
-      if (data.card_theme)  profile.cardTheme   = data.card_theme;
+      if (data.card_theme)   profile.cardTheme   = data.card_theme;
+      // Cargar imagen desde URL pública del Storage
+      if (data.avatar_url) {
+        profile.avatarUrl   = data.avatar_url;
+        profile.avatarImage = data.avatar_url; // se usa como src directamente
+      } else {
+        profile.avatarUrl   = null;
+        profile.avatarImage = null;
+      }
       saveProfileData();
       applyProfileToUI();
     }
