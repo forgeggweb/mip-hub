@@ -2921,25 +2921,20 @@ let heroSlideTimer = null;
 //  INIT
 // ══════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async () => {
-  // Verificar si ya hay una sesión activa
+  // Mostrar perfil guardado en localStorage mientras verificamos sesión
+  applyProfileToUI();
+
+  // Verificar sesión de Supabase
   try {
     const { data: { session } } = await sb.auth.getSession();
     if (session?.user) {
-      // Sesión existente: restaurar usuario y perfil
+      // Hay sesión activa: cargar perfil desde Supabase
       handleAuthUser(session.user);
-      applyProfileToUI();
     } else {
-      // No hay sesión: resetear perfil y pedir login
-      currentUser = null;
-      profile = { username: '', title: 'Game Designer', bio: '', country: '', avatarEmoji: '🎮', cardTheme: 1 };
-      applyProfileToUI();
+      // Sin sesión: pedir login (sin borrar el perfil de localStorage)
       openAuthModal();
     }
   } catch(e) {
-    // Si falla, pedir login de todas formas
-    currentUser = null;
-    profile = { username: '', title: 'Game Designer', bio: '', country: '', avatarEmoji: '🎮', cardTheme: 1 };
-    applyProfileToUI();
     openAuthModal();
   }
 
@@ -4462,10 +4457,10 @@ async function saveProfile() {
   profile.country = document.getElementById('profileCountryInput').value.trim();
   saveProfileData();
   applyProfileToUI();
-  // Guardar en Supabase si hay sesión activa
+  // Guardar en tabla profiles de Supabase
   if (currentUser) {
     try {
-      await sb.from('profiles').upsert({
+      const { error } = await sb.from('profiles').upsert({
         id: currentUser.id,
         username: profile.username,
         title: profile.title,
@@ -4475,6 +4470,7 @@ async function saveProfile() {
         card_theme: profile.cardTheme,
         updated_at: new Date().toISOString()
       }, { onConflict: 'id' });
+      if (error) console.warn('Error guardando perfil:', error);
     } catch(e) { console.warn('No se pudo guardar en Supabase:', e); }
   }
   closeProfile();
@@ -4485,16 +4481,17 @@ async function loadProfileFromSupabase(userId) {
   try {
     const { data, error } = await sb.from('profiles').select('*').eq('id', userId).single();
     if (data && !error) {
-      profile.username = data.username || profile.username;
-      profile.title = data.title || profile.title;
-      profile.bio = data.bio || profile.bio;
-      profile.country = data.country || profile.country;
-      profile.avatarEmoji = data.avatar_emoji || profile.avatarEmoji;
-      profile.cardTheme = data.card_theme || profile.cardTheme;
+      if (data.username)    profile.username    = data.username;
+      if (data.title)       profile.title       = data.title;
+      if (data.bio)         profile.bio         = data.bio;
+      if (data.country)     profile.country     = data.country;
+      if (data.avatar_emoji) profile.avatarEmoji = data.avatar_emoji;
+      if (data.avatar_image) profile.avatarImage = data.avatar_image;
+      if (data.card_theme)  profile.cardTheme   = data.card_theme;
       saveProfileData();
       applyProfileToUI();
     }
-  } catch(e) { console.warn('No se pudo cargar perfil de Supabase:', e); }
+  } catch(e) { console.warn('No se pudo cargar perfil:', e); }
 }
 
 // Apply profile on load (ya cargado desde localStorage arriba)
