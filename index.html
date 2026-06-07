@@ -619,6 +619,35 @@ body::before {
 /* ══════════════════════════════════════════
    GAME CARD — Roblox style
 ══════════════════════════════════════════ */
+/* ── SKELETON LOADERS ─────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position:  600px 0; }
+}
+.card-skeleton {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.skel-thumb {
+  height: 120px;
+  background: linear-gradient(90deg, var(--panel2) 25%, var(--panel3) 50%, var(--panel2) 75%);
+  background-size: 1200px 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+.skel-line {
+  height: 12px; margin: 10px 12px 0;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--panel2) 25%, var(--panel3) 50%, var(--panel2) 75%);
+  background-size: 1200px 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+.skel-title { width: 70%; margin-bottom: 0; }
+.skel-sub   { width: 45%; margin-bottom: 14px; }
+/* ── END SKELETON ─────────────────────────────────────── */
+
 .games-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -3184,7 +3213,10 @@ const STORE_KEY = 'sf_hub_v3';
 // Carga todos los juegos desde Supabase
 async function loadGames() {
   try {
-    const { data, error } = await sb.from('games').select('*').order('ts', { ascending: false });
+    // Excluir campo 'html' del listado inicial — se descarga on-demand al jugar
+    const { data, error } = await sb.from('games')
+      .select('id,name,description,genre,plays,likes,dislikes,thumbnail,screenshots,tags,visibility,version,has_file,author_name,author_emoji,author_id,ts,edited_at')
+      .order('ts', { ascending: false });
     if (error) { console.error('Supabase loadGames error:', error); return []; }
     console.log('Juegos cargados:', data?.length, '| user:', currentUser?.id, '| perfil:', profile.username);
     return (data || []).map(g => {
@@ -3304,8 +3336,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     openAuthModal();
   }
 
-  // Mostrar indicador de carga
-  toast('🔄 Cargando juegos...', 'info');
+  // Mostrar skeletons mientras cargan los juegos
+  renderSkeletons();
   games = await loadGames();
   renderAll();
   setupDragDrop();
@@ -3321,6 +3353,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 });
+
+function makeSkeleton() {
+  const el = document.createElement("div");
+  el.className = "card-skeleton";
+  el.innerHTML = `<div class="skel-thumb"></div><div class="skel-line skel-title"></div><div class="skel-line skel-sub"></div>`;
+  return el;
+}
+
+function renderSkeletons() {
+  const popularRow = document.getElementById("popularRow");
+  const gamesGrid = document.getElementById("gamesGrid");
+  if (popularRow) { popularRow.innerHTML = ""; for(let i=0;i<6;i++) popularRow.appendChild(makeSkeleton()); }
+  if (gamesGrid)  { gamesGrid.innerHTML  = ""; for(let i=0;i<12;i++) gamesGrid.appendChild(makeSkeleton()); }
+}
 
 function renderAll() {
   renderHeroCarousel();
