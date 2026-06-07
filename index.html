@@ -3207,6 +3207,28 @@ function makeDraggable(el, handleEl) {
         </div>
 
         <div>
+          <div class="dp-field-label">Redes Sociales</div>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:2px;">
+            <div style="display:flex;align-items:center;gap:7px;">
+              <span style="font-size:15px;flex-shrink:0;">🎮</span>
+              <input class="dp-input" id="profileSocialDiscord" placeholder="Discord (usuario#0000)" maxlength="48" style="flex:1;font-size:12px;padding:6px 9px;">
+            </div>
+            <div style="display:flex;align-items:center;gap:7px;">
+              <span style="font-size:15px;flex-shrink:0;">🐦</span>
+              <input class="dp-input" id="profileSocialTwitter" placeholder="Twitter / X (@usuario)" maxlength="48" style="flex:1;font-size:12px;padding:6px 9px;">
+            </div>
+            <div style="display:flex;align-items:center;gap:7px;">
+              <span style="font-size:15px;flex-shrink:0;">▶️</span>
+              <input class="dp-input" id="profileSocialYoutube" placeholder="YouTube (URL o canal)" maxlength="80" style="flex:1;font-size:12px;padding:6px 9px;">
+            </div>
+            <div style="display:flex;align-items:center;gap:7px;">
+              <span style="font-size:15px;flex-shrink:0;">📸</span>
+              <input class="dp-input" id="profileSocialInstagram" placeholder="Instagram (@usuario)" maxlength="48" style="flex:1;font-size:12px;padding:6px 9px;">
+            </div>
+          </div>
+        </div>
+
+        <div>
           <div class="dp-field-label">Foto de perfil</div>
           <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
             <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;background:var(--panel3);border:1px dashed var(--border2);border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;color:var(--muted);transition:border-color .15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
@@ -4760,8 +4782,8 @@ let profile = loadProfile();
 function loadProfile() {
   try {
     const d = localStorage.getItem(PROFILE_KEY);
-    return d ? JSON.parse(d) : { username: '', title: 'Game Designer', bio: '', country: '', avatarEmoji: '🎮', cardTheme: 1 };
-  } catch { return { username: '', title: 'Game Designer', bio: '', country: '', avatarEmoji: '🎮', cardTheme: 1 }; }
+    return d ? JSON.parse(d) : { username: '', title: 'Game Designer', bio: '', country: '', avatarEmoji: '🎮', cardTheme: 1, socialLinks: {} };
+  } catch { return { username: '', title: 'Game Designer', bio: '', country: '', avatarEmoji: '🎮', cardTheme: 1, socialLinks: {} }; }
 }
 
 function saveProfileData() {
@@ -5003,6 +5025,15 @@ function openProfile() {
   if (titleInput) titleInput.value = p.title || 'Game Designer';
   document.getElementById('profileBioInput').value = p.bio || '';
   document.getElementById('profileCountryInput').value = p.country || '';
+  const sl = p.socialLinks || {};
+  const sdEl = document.getElementById('profileSocialDiscord');
+  const stEl = document.getElementById('profileSocialTwitter');
+  const syEl = document.getElementById('profileSocialYoutube');
+  const siEl = document.getElementById('profileSocialInstagram');
+  if (sdEl) sdEl.value = sl.discord   || '';
+  if (stEl) stEl.value = sl.twitter   || '';
+  if (syEl) syEl.value = sl.youtube   || '';
+  if (siEl) siEl.value = sl.instagram || '';
 
   // Card content
   document.getElementById('dp-name-display').textContent = p.username || '';
@@ -5046,6 +5077,12 @@ async function saveProfile() {
   profile.title = (document.getElementById('dp-title-input')?.value || '').trim() || 'Game Designer';
   profile.bio = document.getElementById('profileBioInput').value.trim();
   profile.country = document.getElementById('profileCountryInput').value.trim();
+  profile.socialLinks = {
+    discord:   (document.getElementById('profileSocialDiscord')?.value  || '').trim(),
+    twitter:   (document.getElementById('profileSocialTwitter')?.value  || '').trim(),
+    youtube:   (document.getElementById('profileSocialYoutube')?.value  || '').trim(),
+    instagram: (document.getElementById('profileSocialInstagram')?.value|| '').trim(),
+  };
   saveProfileData();
   applyProfileToUI();
   // Guardar en tabla profiles de Supabase
@@ -5087,6 +5124,7 @@ async function saveProfile() {
         avatar_emoji: profile.avatarEmoji,
         avatar_url: avatarUrl,
         card_theme: profile.cardTheme,
+        social_links: profile.socialLinks || {},
         updated_at: new Date().toISOString()
       }, { onConflict: 'id' });
       if (error) console.warn('Error guardando perfil:', error);
@@ -5106,6 +5144,7 @@ async function loadProfileFromSupabase(userId) {
       if (data.country)      profile.country     = data.country;
       if (data.avatar_emoji) profile.avatarEmoji = data.avatar_emoji;
       if (data.card_theme)   profile.cardTheme   = data.card_theme;
+      if (data.social_links) profile.socialLinks = data.social_links;
       // Cargar imagen desde URL pública del Storage
       if (data.avatar_url) {
         profile.avatarUrl   = data.avatar_url;
@@ -5601,6 +5640,7 @@ setTimeout(async () => { await pollNewGames(); setInterval(pollNewGames, 30000);
           </div>
         </div>
         <div class="creator-tags" id="creatorTagsRow"></div>
+        <div id="creatorSocialsRow" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
         <div class="creator-meta-row" id="creatorMetaRow"></div>
         <div id="friendBtnRow" style="margin-top:10px;"></div>
       </div>
@@ -5713,6 +5753,26 @@ function openCreatorProfile(authorName) {
   document.getElementById('creatorTagsRow').innerHTML =
     genres.map(g => '<span class="creator-tag">' + (genreEmoji[g]||'🎮') + ' ' + g + '</span>').join('');
 
+  // Helper: renderiza los socials en el div dedicado
+  function renderSocialsRow(socials) {
+    const row = document.getElementById('creatorSocialsRow');
+    if (!row) return;
+    const sl = socials || {};
+    const SOCIAL_STYLE = 'display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;text-decoration:none;transition:filter .15s;cursor:pointer;';
+    const badges = [
+      sl.discord   ? `<span title="Discord" style="${SOCIAL_STYLE}background:rgba(88,101,242,.18);border:1px solid rgba(88,101,242,.4);color:#7289da;" onmouseover="this.style.filter='brightness(1.3)'" onmouseout="this.style.filter=''"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg> ${escHtml(sl.discord)}</span>` : '',
+      sl.twitter   ? `<a href="https://x.com/${encodeURIComponent(sl.twitter.replace(/^@/,''))}" target="_blank" rel="noopener" title="Twitter/X" style="${SOCIAL_STYLE}background:rgba(29,161,242,.13);border:1px solid rgba(29,161,242,.4);color:#1da1f2;" onmouseover="this.style.filter='brightness(1.3)'" onmouseout="this.style.filter=''"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> ${escHtml(sl.twitter)}</a>` : '',
+      sl.youtube   ? `<a href="${escHtml(sl.youtube.startsWith('http')?sl.youtube:'https://youtube.com/@'+sl.youtube.replace(/^@/,''))}" target="_blank" rel="noopener" title="YouTube" style="${SOCIAL_STYLE}background:rgba(255,0,0,.12);border:1px solid rgba(255,0,0,.35);color:#ff4040;" onmouseover="this.style.filter='brightness(1.3)'" onmouseout="this.style.filter=''"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg> YouTube</a>` : '',
+      sl.instagram ? `<a href="https://instagram.com/${encodeURIComponent(sl.instagram.replace(/^@/,''))}" target="_blank" rel="noopener" title="Instagram" style="${SOCIAL_STYLE}background:rgba(225,48,108,.12);border:1px solid rgba(225,48,108,.4);color:#e1306c;" onmouseover="this.style.filter='brightness(1.3)'" onmouseout="this.style.filter=''"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg> ${escHtml(sl.instagram)}</a>` : '',
+    ].filter(Boolean);
+    row.innerHTML = badges.join('');
+    row.style.display = badges.length ? 'flex' : 'none';
+  }
+
+  // Si es el propio usuario, mostramos sus socials de inmediato desde el profile local
+  if (isMe) renderSocialsRow(profile.socialLinks || {});
+  else document.getElementById('creatorSocialsRow').innerHTML = '';
+
   // Meta row — cargamos info extra desde Supabase
   const metaRow = document.getElementById('creatorMetaRow');
   if (metaRow) {
@@ -5722,7 +5782,12 @@ function openCreatorProfile(authorName) {
 
     // Función para mostrar los datos del perfil
     function showProfileData(data) {
-      if (!data) { metaRow.innerHTML = '<div class="creator-meta-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;flex-shrink:0"><rect x="2" y="6" width="20" height="12" rx="4" stroke="currentColor" stroke-width="2"/><path d="M6 12h4M8 10v4M15 11h.01M18 13h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> <span>' + totalPlays + ' jugadas totales</span></div>'; return; }
+      if (!data) {
+        let fallbackHtml = '<div class="creator-meta-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;flex-shrink:0"><rect x="2" y="6" width="20" height="12" rx="4" stroke="currentColor" stroke-width="2"/><path d="M6 12h4M8 10v4M15 11h.01M18 13h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> <span>' + totalPlays + ' jugadas totales</span></div>';
+        metaRow.innerHTML = fallbackHtml;
+        // Para isMe, los socials ya fueron renderizados de inmediato arriba
+        return;
+      }
 
       // Cargar imagen del creador si tiene — actualizar AMBOS: mini card + header grande
       if (!isMe) {
@@ -5796,15 +5861,18 @@ function openCreatorProfile(authorName) {
       if (data.country) html += '<div class="creator-meta-item">🌍 <span>' + data.country + '</span></div>';
       html += '<div class="creator-meta-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;flex-shrink:0"><rect x="2" y="6" width="20" height="12" rx="4" stroke="currentColor" stroke-width="2"/><path d="M6 12h4M8 10v4M15 11h.01M18 13h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> <span>' + totalPlays + ' jugadas totales</span></div>';
       metaRow.innerHTML = html;
+      // Social links: usar el div dedicado en lugar de inyectar en metaRow
+      const socials = isMe ? (profile.socialLinks || {}) : (data.social_links || {});
+      renderSocialsRow(socials);
     }
 
     if (authorId) {
       // Buscar por ID
-      sb.from('profiles').select('created_at, last_seen, country, avatar_url, avatar_emoji, bio, title, card_theme').eq('id', authorId).single()
+      sb.from('profiles').select('created_at, last_seen, country, avatar_url, avatar_emoji, bio, title, card_theme, social_links').eq('id', authorId).single()
         .then(({ data, error }) => showProfileData(error ? null : data));
     } else {
       // Buscar por username como fallback
-      sb.from('profiles').select('created_at, last_seen, country, avatar_url, avatar_emoji, bio, title, card_theme').ilike('username', authorName.trim()).single()
+      sb.from('profiles').select('created_at, last_seen, country, avatar_url, avatar_emoji, bio, title, card_theme, social_links').ilike('username', authorName.trim()).single()
         .then(({ data, error }) => showProfileData(error ? null : data));
     }
   }
