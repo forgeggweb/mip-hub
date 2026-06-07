@@ -6805,6 +6805,42 @@ async function sendChatMessage(friendId) {
 function initFriendAndChatRealtime() {
   if (!currentUser) return;
 
+  // Listen for NEW incoming friend requests (INSERT where receiver_id = me)
+  try {
+    sb.channel('friend_requests_in_' + currentUser.id)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'friendships',
+        filter: 'receiver_id=eq.' + currentUser.id
+      }, async (payload) => {
+        const f = payload.new;
+        if (!f || f.status !== 'pending') return;
+        const notifId = 'friend_' + f.sender_id;
+        if (notifications.find(n => n.id === notifId)) return; // evitar duplicado
+        let senderName = 'Alguien';
+        let senderAvatar = null;
+        try {
+          const { data } = await sb.from('profiles').select('username,avatar_url').eq('id', f.sender_id).single();
+          if (data) { senderName = data.username || 'Alguien'; senderAvatar = data.avatar_url; }
+        } catch(e) {}
+        notifications.unshift({
+          id: notifId,
+          type: 'friend_request',
+          senderId: f.sender_id,
+          senderName,
+          senderAvatar,
+          ts: Date.now(),
+          read: false,
+        });
+        saveNotifications();
+        updateNotifBadge();
+        renderNotifList();
+        toast(`👥 <strong>${senderName}</strong> te envió una solicitud de amistad!`, 'success');
+      })
+      .subscribe();
+  } catch(e) {}
+
   // Listen for friendship updates (accepted)
   try {
     sb.channel('friendships_' + currentUser.id)
