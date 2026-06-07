@@ -5649,42 +5649,59 @@ async function renderFriendsView() {
     return;
   }
 
-  container.innerHTML = `<div style="text-align:center;padding:30px;color:var(--muted);">Cargando amigos...</div>`;
-  await loadFriendships();
+  container.innerHTML = `<div style="text-align:center;padding:30px;color:var(--muted);">⏳ Cargando amigos...</div>`;
+
+  // Forzar recarga fresca desde Supabase
+  try {
+    const { data, error } = await sb.from('friendships')
+      .select('*')
+      .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`);
+    if (error) throw error;
+    _friendships = data || [];
+  } catch(e) {
+    container.innerHTML = `<div style="text-align:center;padding:40px;color:var(--red);">❌ Error al cargar amigos. Revisá tu conexión.</div>`;
+    return;
+  }
 
   const accepted = _friendships.filter(f => f.status === 'accepted');
   const pending  = _friendships.filter(f => f.status === 'pending' && f.receiver_id === currentUser.id);
 
-  // Build pending requests section
+  // -- Solicitudes pendientes --
   let pendingHtml = '';
   if (pending.length > 0) {
     const senderIds = pending.map(f => f.sender_id);
-    const { data: pendingProfs } = await sb.from('profiles').select('id,username,avatar_url,avatar_emoji,title').in('id', senderIds);
+    let pendingProfs = [];
+    try {
+      const { data } = await sb.from('profiles').select('id,username,avatar_url,avatar_emoji').in('id', senderIds);
+      pendingProfs = data || [];
+    } catch(e) {}
+
     pendingHtml = `<div class="pending-section">
       <div class="pending-section-title">📨 Solicitudes pendientes <span style="background:var(--accent);color:#000;border-radius:99px;padding:1px 8px;font-size:11px;">${pending.length}</span></div>
       <div class="pending-list">`;
     for (const f of pending) {
-      const prof = (pendingProfs||[]).find(p => p.id === f.sender_id) || {};
+      const prof = pendingProfs.find(p => p.id === f.sender_id) || {};
       const avatarHtml = prof.avatar_url
-        ? `<img src="${escHtml(prof.avatar_url)}" alt="">`
+        ? `<img src="${escHtml(prof.avatar_url)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
         : `<span>${prof.avatar_emoji||'👤'}</span>`;
       pendingHtml += `<div class="pending-item">
         <div class="pending-item-avatar">${avatarHtml}</div>
         <div class="pending-item-name">${escHtml(prof.username||'Usuario')}</div>
         <div class="pending-item-actions">
-          <button class="notif-friend-btn accept" onclick="acceptFriendRequest('${f.sender_id}');renderFriendsView()">✅ Aceptar</button>
-          <button class="notif-friend-btn reject" onclick="rejectFriendRequest('${f.sender_id}','');renderFriendsView()">✕</button>
+          <button class="notif-friend-btn accept" onclick="acceptFriendRequest('${f.sender_id}');setTimeout(renderFriendsView,600)">✅ Aceptar</button>
+          <button class="notif-friend-btn reject" onclick="rejectFriendRequest('${f.sender_id}','');setTimeout(renderFriendsView,600)">✕</button>
         </div>
       </div>`;
     }
     pendingHtml += `</div></div>`;
   }
 
+  // -- Sin amigos ni solicitudes --
   if (accepted.length === 0 && pending.length === 0) {
     container.innerHTML = `<div style="text-align:center;padding:60px 20px;color:var(--muted);">
       <div style="font-size:48px;margin-bottom:12px;">👥</div>
       <div style="font-size:16px;font-weight:700;">Todavía no tenés amigos</div>
-      <div style="font-size:13px;margin-top:6px;">Buscá creadores y enviá solicitudes de amistad</div>
+      <div style="font-size:13px;margin-top:6px;">Buscá creadores y enviá solicitudes de amistad desde sus perfiles</div>
     </div>`;
     return;
   }
@@ -5694,27 +5711,47 @@ async function renderFriendsView() {
     return;
   }
 
+  // -- Lista de amigos aceptados --
   const friendIds = accepted.map(f => f.sender_id === currentUser.id ? f.receiver_id : f.sender_id);
-  const { data: profs } = await sb.from('profiles').select('id,username,avatar_url,avatar_emoji,title,last_seen').in('id', friendIds);
-  const now = Date.now();
 
-  let friendsHtml = `<div class="friends-view-grid">`;
-  for (const p of (profs||[])) {
+  let profs = [];
+  try {
+    const { data } = await sb.from('profiles')
+      .select('id,username,avatar_url,avatar_emoji,title,last_seen')
+      .in('id', friendIds);
+    profs = data || [];
+  } catch(e) {}
+
+  // Si no hay perfil para algún amigo, igual mostrar algo
+  const friendsToShow = friendIds.map(fid => {
+    const p = profs.find(x => x.id === fid);
+    return p || { id: fid, username: 'Usuario', avatar_url: null, avatar_emoji: '🎮', title: 'Game Creator', last_seen: null };
+  });
+
+  const now = Date.now();
+  let friendsHtml = `<div style="margin-bottom:12px;font-size:13px;font-weight:700;color:var(--muted);">👥 Amigos (${friendsToShow.length})</div><div class="friends-view-grid">`;
+
+  for (const p of friendsToShow) {
     const avatarHtml = p.avatar_url
-      ? `<img src="${escHtml(p.avatar_url)}" alt="">`
+      ? `<img src="${escHtml(p.avatar_url)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
       : `<span>${p.avatar_emoji||'🎮'}</span>`;
     const isOnline = p.last_seen && (now - new Date(p.last_seen).getTime()) < 5 * 60 * 1000;
-    friendsHtml += `<div class="friend-card" onclick="openCreatorProfile('${escHtml(p.username||'')}')">
-      <div class="friend-card-avatar">
+    const safeUsername = escHtml(p.username||'Usuario');
+    const safeAvatar = escHtml(p.avatar_url||'');
+    const safeEmoji = escHtml(p.avatar_emoji||'🎮');
+    const safeId = escHtml(p.id);
+
+    friendsHtml += `<div class="friend-card" onclick="openCreatorProfile('${safeUsername}')">
+      <div class="friend-card-avatar" style="position:relative;">
         ${avatarHtml}
-        <div class="friend-card-online ${isOnline?'online':'offline'}"></div>
+        <div class="friend-card-online ${isOnline?'online':'offline'}" style="position:absolute;bottom:2px;right:2px;width:12px;height:12px;border-radius:50%;border:2px solid var(--panel);background:${isOnline?'var(--green)':'var(--muted)'};"></div>
       </div>
-      <div class="friend-card-name">${escHtml(p.username||'Usuario')}</div>
+      <div class="friend-card-name">${safeUsername}</div>
       <div class="friend-card-title">${escHtml(p.title||'Game Creator')}</div>
       <div style="font-size:10px;color:${isOnline?'var(--green)':'var(--muted)'};">${isOnline?'🟢 En línea':'⚫ Desconectado'}</div>
       <div class="friend-card-actions" onclick="event.stopPropagation()">
-        <button class="friend-card-btn chat" onclick="openChat('${p.id}','${escHtml(p.username||'Usuario')}','${escHtml(p.avatar_url||'')}','${escHtml(p.avatar_emoji||'🎮')}')">💬 Chat</button>
-        <button class="friend-card-btn remove" onclick="removeFriend('${p.id}','${escHtml(p.username||'')}');setTimeout(renderFriendsView,500)">✕</button>
+        <button class="friend-card-btn chat" onclick="openChat('${safeId}','${safeUsername}','${safeAvatar}','${safeEmoji}')">💬 Chat</button>
+        <button class="friend-card-btn remove" onclick="if(confirm('¿Quitar a ${safeUsername} de amigos?')){removeFriend('${safeId}','${safeUsername}');setTimeout(renderFriendsView,600)}">✕</button>
       </div>
     </div>`;
   }
