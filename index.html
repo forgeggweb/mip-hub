@@ -2157,6 +2157,39 @@ body::before {
   text-transform: uppercase; letter-spacing: .8px; margin-bottom: 10px;
   padding-top: 14px; border-top: 1px solid var(--border);
 }
+.btn-friend {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 16px; border-radius: 8px; border: none; cursor: pointer;
+  font-size: 12px; font-weight: 700; transition: all .15s;
+}
+.btn-friend.send { background: var(--accent); color: #000; }
+.btn-friend.send:hover { opacity: .85; }
+.btn-friend.pending { background: var(--panel3); color: var(--muted); border: 1px solid var(--border); cursor: default; }
+.btn-friend.friends { background: rgba(0,230,118,.15); color: var(--green); border: 1px solid rgba(0,230,118,.3); }
+.btn-friend.friends:hover { background: rgba(255,68,68,.12); color: var(--red); border-color: rgba(255,68,68,.3); }
+
+/* Friends section in profile card */
+.friends-section { margin-top: 14px; }
+.friends-section-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 8px; }
+.friends-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.friend-chip {
+  display: flex; align-items: center; gap: 7px;
+  background: var(--panel2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 4px 12px 4px 6px;
+  cursor: pointer; transition: all .15s; font-size: 12px;
+}
+.friend-chip:hover { border-color: var(--accent); }
+.friend-chip-avatar {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--panel3); display: flex; align-items: center; justify-content: center;
+  font-size: 13px; overflow: hidden; flex-shrink: 0;
+}
+.friend-chip-avatar img { width:100%; height:100%; object-fit:cover; }
+/* Notif friend request styles */
+.notif-friend-actions { display: flex; gap: 6px; margin-top: 6px; }
+.notif-friend-btn { padding: 4px 14px; border-radius: 6px; border: none; cursor: pointer; font-size: 11px; font-weight: 700; }
+.notif-friend-btn.accept { background: var(--green); color: #000; }
+.notif-friend-btn.reject { background: var(--panel3); color: var(--muted); border: 1px solid var(--border); }
 .creator-games-scroll {
   display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px;
   scrollbar-width: none;
@@ -2758,6 +2791,8 @@ body::before {
           <button class="dp-save-btn" style="flex:1" onclick="saveProfile()">💾 Guardar Perfil</button>
         </div>
 
+        <div id="friendsSection" style="margin-top:8px;"></div>
+
       </div>
     </div>
   </div>
@@ -3137,7 +3172,8 @@ function updateStats() {
   document.getElementById('statMine').textContent = mine;
   document.getElementById('statPlays').textContent = plays >= 1000 ? (plays/1000).toFixed(1)+'k' : plays;
   document.getElementById('statFavs').textContent = favs;
-  document.getElementById('mineCount').textContent = mine;
+  const mineCount = document.getElementById('mineCount');
+  if (mineCount) mineCount.textContent = mine;
 }
 
 // ══════════════════════════════════════════════
@@ -3297,10 +3333,7 @@ function renderPopularRow() {
 }
 
 function renderMineRow() {
-  const mine = games.filter(g => g.mine).slice(0,8);
-  const sec = document.getElementById('sec-mine');
-  if (sec) sec.style.display = mine.length ? '' : 'none';
-  renderCardsInto(document.getElementById('mineRow'), mine, true);
+  // Sección eliminada del inicio — solo se usa en la pestaña Mis Juegos
 }
 
 function renderChartsGrid() {
@@ -3446,31 +3479,43 @@ async function playGame(id) {
   const game = games.find(g => g.id === id);
   if (!game) return;
 
-  // Si no tiene HTML en memoria, descargarlo de Supabase Storage
-  if (!blobStore[id] && !game.html) {
-    toast('⏳ Cargando juego...', 'info');
-    const html = await fetchGameHtml(id);
-    if (!html) { toast('No se pudo cargar el juego', 'error'); return; }
-    game.html = html;
-  }
-
-  const url = getGameUrl(id);
-  if (!url) { toast('El archivo del juego no está disponible', 'error'); return; }
-
-  game.plays = (game.plays || 0) + 1;
-  currentPlayingId = id;
-  await saveGame(game);
-
-  // Show player with loading screen
+  // Mostrar pantalla de carga INMEDIATAMENTE al clickear
   document.getElementById('playerTitle').textContent = '🎮 ' + game.name;
   document.getElementById('loadingGameName').textContent = game.name;
   document.getElementById('loadingBarFill').style.width = '0%';
   document.getElementById('loadingPct').textContent = '0%';
-  document.getElementById('loadingStatus').textContent = 'Iniciando motor...';
+  document.getElementById('loadingStatus').textContent = 'Conectando...';
   document.getElementById('playerLoading').classList.remove('hidden');
   document.getElementById('playerFrame').src = 'about:blank';
   document.getElementById('playerOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
+
+  // Si no tiene HTML en memoria, descargarlo de Supabase Storage
+  if (!blobStore[id] && !game.html) {
+    document.getElementById('loadingStatus').textContent = 'Descargando juego...';
+    document.getElementById('loadingBarFill').style.width = '15%';
+    document.getElementById('loadingPct').textContent = '15%';
+    const html = await fetchGameHtml(id);
+    if (!html) {
+      document.getElementById('playerOverlay').classList.remove('open');
+      document.body.style.overflow = '';
+      toast('No se pudo cargar el juego', 'error');
+      return;
+    }
+    game.html = html;
+  }
+
+  const url = getGameUrl(id);
+  if (!url) {
+    document.getElementById('playerOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+    toast('El archivo del juego no está disponible', 'error');
+    return;
+  }
+
+  game.plays = (game.plays || 0) + 1;
+  currentPlayingId = id;
+  await saveGame(game);
 
   // Play MiP startup sound
   (function playMipSound() {
@@ -4212,8 +4257,16 @@ function applyProfileToUI() {
   const avatarEl = document.getElementById('avatarEl');
   if (topImg && topText && avatarEl) {
     if (img) {
-      topImg.src = img; topImg.style.display = 'block'; topText.style.display = 'none';
+      topImg.src = img;
+      topImg.style.display = 'block';
+      topText.style.display = 'none';
       avatarEl.classList.add('has-image');
+      topImg.onerror = () => {
+        topImg.style.display = 'none';
+        topText.style.display = 'block';
+        topText.textContent = name.charAt(0).toUpperCase();
+        avatarEl.classList.remove('has-image');
+      };
     } else {
       topImg.style.display = 'none'; topText.style.display = 'block';
       topText.textContent = name.charAt(0).toUpperCase();
@@ -4226,7 +4279,12 @@ function applyProfileToUI() {
   const phcImg = document.getElementById('phc-img');
   const phcEmoji = document.getElementById('phc-emoji');
   if (phcImg && phcEmoji) {
-    if (img) { phcImg.src = img; phcImg.style.display = 'block'; phcEmoji.style.display = 'none'; }
+    if (img) {
+      phcImg.src = img;
+      phcImg.style.display = 'block';
+      phcEmoji.style.display = 'none';
+      phcImg.onerror = () => { phcImg.style.display = 'none'; phcEmoji.style.display = 'block'; phcEmoji.textContent = emoji; };
+    }
     else { phcImg.style.display = 'none'; phcEmoji.style.display = 'block'; phcEmoji.textContent = emoji; }
   }
   const phcName = document.getElementById('phc-name');
@@ -4323,6 +4381,14 @@ function dpApplyAvatarImage(src) {
     img.src = src;
     img.style.display = 'block';
     if (emoji) emoji.style.display = 'none';
+    img.onerror = () => {
+      img.style.display = 'none';
+      img.src = '';
+      if (emoji) emoji.style.display = 'block';
+      // Si falla cargar la URL, limpiar para no reintentar
+      profile.avatarImage = null;
+      saveProfileData();
+    };
   } else {
     img.style.display = 'none';
     img.src = '';
@@ -4442,7 +4508,7 @@ function openProfile() {
   dpRefreshBack();
 
   document.getElementById('profileModal').classList.add('open');
-  setTimeout(() => { dpDrawQR(); dpInitTilt(); }, 50);
+  setTimeout(() => { dpDrawQR(); dpInitTilt(); renderFriendsList(); }, 50);
 }
 
 function closeProfile() {
@@ -4577,6 +4643,8 @@ function handleAuthUser(user) {
     window._lastSeenInterval = setInterval(() => {
       if (currentUser) sb.from('profiles').upsert({ id: currentUser.id, last_seen: new Date().toISOString() }, { onConflict: 'id' });
     }, 2 * 60 * 1000);
+    // Cargar solicitudes de amistad pendientes
+    setTimeout(() => { loadFriendNotifications(); renderFriendsList(); }, 1500);
   } else {
     if (loginBtn)  loginBtn.style.display  = 'block';
     if (logoutBtn) logoutBtn.style.display = 'none';
@@ -4906,6 +4974,7 @@ setTimeout(initNotifRealtime, 1500);
         </div>
         <div class="creator-tags" id="creatorTagsRow"></div>
         <div class="creator-meta-row" id="creatorMetaRow"></div>
+        <div id="friendBtnRow" style="margin-top:10px;"></div>
       </div>
     </div>
     <!-- Games by this creator -->
@@ -5019,63 +5088,68 @@ function openCreatorProfile(authorName) {
   // Meta row — cargamos info extra desde Supabase
   const metaRow = document.getElementById('creatorMetaRow');
   if (metaRow) {
-    // Mientras carga mostramos placeholders
     metaRow.innerHTML = '<div class="creator-meta-item">⏳ <span>Cargando info...</span></div>';
 
-    // Buscar author_id: si es el usuario logueado lo tenemos, sino buscamos en los juegos
-    const authorId = isMe
-      ? currentUser?.id
-      : (creatorGames[0]?.author_id || null);
+    const authorId = isMe ? currentUser?.id : (creatorGames[0]?.author_id || null);
+
+    // Función para mostrar los datos del perfil
+    function showProfileData(data) {
+      if (!data) { metaRow.innerHTML = '<div class="creator-meta-item">🎮 <span>' + totalPlays + ' jugadas totales</span></div>'; return; }
+
+      // Cargar imagen del creador si tiene
+      if (!isMe && data.avatar_url) {
+        if (imgEl) {
+          imgEl.src = data.avatar_url;
+          imgEl.style.display = 'block';
+          imgEl.onerror = () => { imgEl.style.display = 'none'; if (emojiEl) emojiEl.style.display = 'block'; };
+          if (emojiEl) emojiEl.style.display = 'none';
+        }
+      }
+
+      // Bio y país
+      if (!isMe) {
+        const bioEl = document.getElementById('creatorBio');
+        if (bioEl && data.bio) bioEl.textContent = data.bio;
+        const titleEl = document.getElementById('creatorTitleLabel');
+        if (titleEl && data.title) titleEl.textContent = data.title;
+      }
+
+      const now = new Date();
+      const lastSeen = data.last_seen ? new Date(data.last_seen) : null;
+      const createdAt = data.created_at ? new Date(data.created_at) : null;
+      const isOnline = lastSeen && (now - lastSeen) < 5 * 60 * 1000;
+      const minutesAgo = lastSeen ? Math.floor((now - lastSeen) / 60000) : null;
+      const hoursAgo = lastSeen ? Math.floor((now - lastSeen) / 3600000) : null;
+      const daysAgo = lastSeen ? Math.floor((now - lastSeen) / 86400000) : null;
+
+      let lastSeenText = 'Nunca';
+      if (lastSeen) {
+        if (isOnline) lastSeenText = 'Ahora mismo';
+        else if (minutesAgo < 60) lastSeenText = 'Hace ' + minutesAgo + ' min';
+        else if (hoursAgo < 24) lastSeenText = 'Hace ' + hoursAgo + 'h';
+        else if (daysAgo < 30) lastSeenText = 'Hace ' + daysAgo + ' días';
+        else lastSeenText = lastSeen.toLocaleDateString('es-AR', {day:'numeric', month:'short', year:'numeric'});
+      }
+
+      let joinedText = '—';
+      if (createdAt) joinedText = createdAt.toLocaleDateString('es-AR', {day:'numeric', month:'short', year:'numeric'});
+
+      let html = '';
+      html += '<div class="creator-meta-item"><div class="creator-online-dot ' + (isOnline ? 'online' : 'offline') + '"></div><span>' + (isOnline ? 'En línea' : lastSeenText) + '</span></div>';
+      html += '<div class="creator-meta-item">📅 Desde <span>' + joinedText + '</span></div>';
+      if (data.country) html += '<div class="creator-meta-item">🌍 <span>' + data.country + '</span></div>';
+      html += '<div class="creator-meta-item">🎮 <span>' + totalPlays + ' jugadas totales</span></div>';
+      metaRow.innerHTML = html;
+    }
 
     if (authorId) {
-      sb.from('profiles').select('created_at, last_seen, country').eq('id', authorId).single()
-        .then(({ data, error }) => {
-          if (error || !data) { metaRow.innerHTML = ''; return; }
-
-          const now = new Date();
-          const lastSeen = data.last_seen ? new Date(data.last_seen) : null;
-          const createdAt = data.created_at ? new Date(data.created_at) : null;
-
-          // Online si last_seen hace menos de 5 minutos
-          const isOnline = lastSeen && (now - lastSeen) < 5 * 60 * 1000;
-          const minutesAgo = lastSeen ? Math.floor((now - lastSeen) / 60000) : null;
-          const hoursAgo = lastSeen ? Math.floor((now - lastSeen) / 3600000) : null;
-          const daysAgo = lastSeen ? Math.floor((now - lastSeen) / 86400000) : null;
-
-          let lastSeenText = 'Nunca';
-          if (lastSeen) {
-            if (isOnline) lastSeenText = 'Ahora mismo';
-            else if (minutesAgo < 60) lastSeenText = 'Hace ' + minutesAgo + ' min';
-            else if (hoursAgo < 24) lastSeenText = 'Hace ' + hoursAgo + 'h';
-            else if (daysAgo < 30) lastSeenText = 'Hace ' + daysAgo + ' días';
-            else lastSeenText = lastSeen.toLocaleDateString('es-AR', {day:'numeric', month:'short', year:'numeric'});
-          }
-
-          let joinedText = '—';
-          if (createdAt) {
-            joinedText = createdAt.toLocaleDateString('es-AR', {day:'numeric', month:'short', year:'numeric'});
-          }
-
-          let html = '';
-          // Online status
-          html += '<div class="creator-meta-item">'
-            + '<div class="creator-online-dot ' + (isOnline ? 'online' : 'offline') + '"></div>'
-            + '<span>' + (isOnline ? 'En línea' : lastSeenText) + '</span>'
-            + '</div>';
-          // Fecha de registro
-          html += '<div class="creator-meta-item">📅 Desde <span>' + joinedText + '</span></div>';
-          // País
-          if (data.country) {
-            html += '<div class="creator-meta-item">🌍 <span>' + data.country + '</span></div>';
-          }
-          // Total jugadas
-          html += '<div class="creator-meta-item">🎮 <span>' + totalPlays + ' jugadas totales</span></div>';
-
-          metaRow.innerHTML = html;
-        });
+      // Buscar por ID
+      sb.from('profiles').select('created_at, last_seen, country, avatar_url, bio, title').eq('id', authorId).single()
+        .then(({ data, error }) => showProfileData(error ? null : data));
     } else {
-      // Sin author_id solo mostramos jugadas
-      metaRow.innerHTML = '<div class="creator-meta-item">🎮 <span>' + totalPlays + ' jugadas totales</span></div>';
+      // Buscar por username como fallback
+      sb.from('profiles').select('created_at, last_seen, country, avatar_url, bio, title').ilike('username', authorName.trim()).single()
+        .then(({ data, error }) => showProfileData(error ? null : data));
     }
   }
 
@@ -5109,6 +5183,20 @@ function openCreatorProfile(authorName) {
     div.appendChild(nameEl);
     scroll.appendChild(div);
   });
+
+  // Friend button — buscar userId del creador
+  const friendBtnRow = document.getElementById('friendBtnRow');
+  if (friendBtnRow) { friendBtnRow.innerHTML = ''; }
+  if (!isMe && currentUser) {
+    // Buscar el ID del creador desde profiles
+    const creatorAuthorId = creatorGames[0]?.author_id || null;
+    if (creatorAuthorId) {
+      renderFriendButton(creatorAuthorId, displayName);
+    } else {
+      sb.from('profiles').select('id').ilike('username', authorName.trim()).single()
+        .then(({ data }) => { if (data?.id) renderFriendButton(data.id, displayName); });
+    }
+  }
 
   document.getElementById('creatorModal').classList.add('open');
 
@@ -5153,6 +5241,224 @@ function closeCreatorModal() {
 document.getElementById('creatorModal').addEventListener('click', function(e) {
   if (e.target === this) closeCreatorModal();
 });
+
+// ══════════════════════════════════════════════
+//  FRIEND SYSTEM
+// ══════════════════════════════════════════════
+let _friendships = []; // cache local
+
+async function loadFriendships() {
+  if (!currentUser) return;
+  try {
+    const { data } = await sb.from('friendships')
+      .select('*')
+      .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`);
+    _friendships = data || [];
+  } catch(e) { _friendships = []; }
+}
+
+function getFriendStatus(targetUserId) {
+  if (!currentUser || !targetUserId) return null;
+  const f = _friendships.find(f =>
+    (f.sender_id === currentUser.id && f.receiver_id === targetUserId) ||
+    (f.sender_id === targetUserId && f.receiver_id === currentUser.id)
+  );
+  if (!f) return null;
+  if (f.status === 'accepted') return 'friends';
+  if (f.status === 'pending' && f.sender_id === currentUser.id) return 'pending_sent';
+  if (f.status === 'pending' && f.receiver_id === currentUser.id) return 'pending_received';
+  return null;
+}
+
+async function renderFriendButton(targetUserId, targetName) {
+  const row = document.getElementById('friendBtnRow');
+  if (!row) return;
+  if (!currentUser || !targetUserId || targetUserId === currentUser.id) { row.innerHTML = ''; return; }
+
+  await loadFriendships();
+  const status = getFriendStatus(targetUserId);
+
+  if (status === 'friends') {
+    row.innerHTML = `<button class="btn-friend friends" onclick="removeFriend('${targetUserId}','${escHtml(targetName)}')">✅ Amigos · Quitar</button>`;
+  } else if (status === 'pending_sent') {
+    row.innerHTML = `<button class="btn-friend pending">⏳ Solicitud enviada</button>`;
+  } else if (status === 'pending_received') {
+    row.innerHTML = `<button class="btn-friend send" onclick="acceptFriendRequest('${targetUserId}')">✅ Aceptar solicitud</button>`;
+  } else {
+    row.innerHTML = `<button class="btn-friend send" onclick="sendFriendRequest('${targetUserId}','${escHtml(targetName)}')">➕ Enviar solicitud</button>`;
+  }
+}
+
+async function sendFriendRequest(targetUserId, targetName) {
+  if (!currentUser) { toast('Iniciá sesión primero', 'error'); return; }
+  try {
+    const { error } = await sb.from('friendships').insert({
+      sender_id: currentUser.id,
+      receiver_id: targetUserId,
+      status: 'pending'
+    });
+    if (error) throw error;
+    await loadFriendships();
+    renderFriendButton(targetUserId, targetName);
+    toast('✅ Solicitud enviada a ' + targetName, 'success');
+    // Guardar notificación para el receptor en Supabase
+    await sb.from('profiles').upsert({
+      id: currentUser.id,
+      last_seen: new Date().toISOString()
+    }, { onConflict: 'id' });
+  } catch(e) {
+    toast('Error al enviar solicitud', 'error');
+  }
+}
+
+async function acceptFriendRequest(senderId) {
+  try {
+    await sb.from('friendships')
+      .update({ status: 'accepted' })
+      .eq('sender_id', senderId)
+      .eq('receiver_id', currentUser.id);
+    await loadFriendships();
+    renderFriendButton(senderId, '');
+    toast('✅ ¡Ahora son amigos!', 'success');
+    loadFriendNotifications();
+    renderFriendsList();
+  } catch(e) { toast('Error al aceptar', 'error'); }
+}
+
+async function rejectFriendRequest(senderId, notifId) {
+  try {
+    await sb.from('friendships')
+      .update({ status: 'rejected' })
+      .eq('sender_id', senderId)
+      .eq('receiver_id', currentUser.id);
+    await loadFriendships();
+    // remove notif
+    notifications = notifications.filter(n => n.id !== notifId);
+    saveNotifications();
+    renderNotifList();
+    updateNotifBadge();
+    toast('Solicitud rechazada', 'info');
+  } catch(e) { toast('Error al rechazar', 'error'); }
+}
+
+async function removeFriend(targetUserId, targetName) {
+  if (!confirm('¿Quitar a ' + targetName + ' de amigos?')) return;
+  try {
+    await sb.from('friendships')
+      .delete()
+      .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${targetUserId}),and(sender_id.eq.${targetUserId},receiver_id.eq.${currentUser.id})`);
+    await loadFriendships();
+    renderFriendButton(targetUserId, targetName);
+    renderFriendsList();
+    toast('Amigo eliminado', 'info');
+  } catch(e) { toast('Error al eliminar amigo', 'error'); }
+}
+
+// Cargar solicitudes pendientes recibidas y mostrarlas como notificaciones
+async function loadFriendNotifications() {
+  if (!currentUser) return;
+  try {
+    const { data } = await sb.from('friendships')
+      .select('sender_id, created_at')
+      .eq('receiver_id', currentUser.id)
+      .eq('status', 'pending');
+    if (!data || data.length === 0) return;
+
+    for (const req of data) {
+      const notifId = 'friend_' + req.sender_id;
+      if (notifications.find(n => n.id === notifId)) continue;
+      // Buscar nombre del que envió
+      const { data: prof } = await sb.from('profiles').select('username, avatar_url').eq('id', req.sender_id).single();
+      const senderName = prof?.username || 'Alguien';
+      notifications.unshift({
+        id: notifId,
+        type: 'friend_request',
+        senderId: req.sender_id,
+        senderName,
+        senderAvatar: prof?.avatar_url || null,
+        ts: new Date(req.created_at).getTime(),
+        read: false,
+      });
+    }
+    saveNotifications();
+    updateNotifBadge();
+    renderNotifList();
+  } catch(e) {}
+}
+
+// Renderizar lista de amigos en el perfil propio
+async function renderFriendsList() {
+  const section = document.getElementById('friendsSection');
+  if (!section || !currentUser) return;
+  await loadFriendships();
+  const accepted = _friendships.filter(f => f.status === 'accepted');
+  if (accepted.length === 0) { section.innerHTML = ''; return; }
+
+  const friendIds = accepted.map(f => f.sender_id === currentUser.id ? f.receiver_id : f.sender_id);
+  const { data: profs } = await sb.from('profiles').select('id, username, avatar_url, avatar_emoji').in('id', friendIds);
+
+  let html = '<div class="friends-section"><div class="friends-section-title">👥 Amigos (' + accepted.length + ')</div><div class="friends-list">';
+  for (const p of (profs || [])) {
+    const avatarHtml = p.avatar_url
+      ? `<img src="${escHtml(p.avatar_url)}" alt="">`
+      : `<span>${p.avatar_emoji || '🎮'}</span>`;
+    html += `<div class="friend-chip" onclick="closeProfile();openCreatorProfile('${escHtml(p.username || '')}')">
+      <div class="friend-chip-avatar">${avatarHtml}</div>
+      <span>${escHtml(p.username || 'Usuario')}</span>
+    </div>`;
+  }
+  html += '</div></div>';
+  section.innerHTML = html;
+}
+
+// Hook into renderNotifList to show friend request actions
+const _origRenderNotifList = renderNotifList;
+renderNotifList = function() {
+  const list = document.getElementById('notifList');
+  if (!list) return;
+  if (notifications.length === 0) {
+    list.innerHTML = `<div class="notif-empty"><div class="notif-empty-icon">🔔</div>No hay notificaciones nuevas</div>`;
+    return;
+  }
+  list.innerHTML = '';
+  notifications.forEach(n => {
+    const item = document.createElement('div');
+    item.className = 'notif-item' + (n.read ? '' : ' unread');
+    const timeAgo = getTimeAgo(n.ts);
+
+    if (n.type === 'friend_request') {
+      const avatarHtml = n.senderAvatar
+        ? `<img src="${escHtml(n.senderAvatar)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">`
+        : `<span style="font-size:20px">👤</span>`;
+      item.innerHTML = `
+        <div class="notif-item-icon">${avatarHtml}</div>
+        <div class="notif-item-body">
+          <div class="notif-item-text">👥 <strong>${escHtml(n.senderName)}</strong> te envió una solicitud de amistad</div>
+          <div class="notif-item-time">${timeAgo}</div>
+          <div class="notif-friend-actions">
+            <button class="notif-friend-btn accept" onclick="event.stopPropagation();acceptFriendRequest('${n.senderId}')">✅ Aceptar</button>
+            <button class="notif-friend-btn reject" onclick="event.stopPropagation();rejectFriendRequest('${n.senderId}','${n.id}')">✕ Rechazar</button>
+          </div>
+        </div>`;
+    } else {
+      const iconHtml = n.thumbnail
+        ? `<img src="${n.thumbnail}" alt="">`
+        : `<span style="font-size:20px">${genreEmoji[n.genre] || '🎮'}</span>`;
+      item.innerHTML = `
+        <div class="notif-item-icon">${iconHtml}</div>
+        <div class="notif-item-body">
+          <div class="notif-item-text">🆕 <strong>${escHtml(n.authorName)}</strong> publicó <strong>${escHtml(n.gameName)}</strong></div>
+          <div class="notif-item-time">${timeAgo}</div>
+        </div>`;
+      item.onclick = () => {
+        n.read = true; saveNotifications(); updateNotifBadge(); renderNotifList();
+        const game = games.find(g => g.id === n.gameId);
+        if (game) { toggleNotifPanel(); openDetail(n.gameId); }
+      };
+    }
+    list.appendChild(item);
+  });
+};
 </script>
 
 </body>
