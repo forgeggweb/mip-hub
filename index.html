@@ -4460,8 +4460,9 @@ function _initRchStars() {
 
 // Abre perfil desde ranking — implementación directa y robusta
 function _openTopProfile(username, userId) {
+  console.log('[PERFIL] _openTopProfile llamado:', username, userId);
   const modal = document.getElementById('creatorModal');
-  if (!modal) return;
+  if (!modal) { console.error('[PERFIL] ERROR: No existe #creatorModal en el DOM!'); return; }
 
   // Reset modal to loading state and open immediately
   const cmUsEl    = document.getElementById('cmUsername');
@@ -4505,8 +4506,10 @@ function _openTopProfile(username, userId) {
     (username && profile.username && profile.username.trim().toLowerCase() === username.trim().toLowerCase())
   );
 
+  console.log('[PERFIL] isMe:', isMe, '| currentUser:', currentUser?.id, '| userId:', userId);
   if (isMe) {
     // Para el usuario propio, abrir su perfil directamente
+    console.log('[PERFIL] Es el usuario actual, abriendo perfil propio');
     modal.classList.remove('open');
     setTimeout(() => openProfile(), 50);
     return;
@@ -4518,6 +4521,7 @@ function _openTopProfile(username, userId) {
     : sb.from('profiles').select('id,username,avatar_url,avatar_emoji,bio,title,created_at,last_seen,country,card_theme,social_links').ilike('username', username).maybeSingle();
 
   fetchProfile.then(({ data, error }) => {
+    console.log('[PERFIL] Supabase respuesta:', { data, error });
     // Si no hay perfil en Supabase, construir desde datos del juego en memoria
     if (error || !data) {
       const fallbackGames = games.filter(g =>
