@@ -3242,8 +3242,8 @@ async function loadGames() {
 // Guarda UN juego en Supabase (upsert)
 async function saveGame(game) {
   try {
-    // Guardar HTML en Supabase Storage
-    if (game.html) {
+    // Guardar HTML en Supabase Storage (solo si hay HTML nuevo)
+    if (game.html && !game._skipHtml) {
       const blob = new Blob([game.html], { type: 'text/html' });
       const { error: storageErr } = await sb.storage
         .from('game-files')
@@ -3264,14 +3264,17 @@ async function saveGame(game) {
       tags:         game.tags || [],
       visibility:   game.visibility  || 'public',
       version:      game.version || '',
-      has_file:     !!game.html,
-      html:         game.html || null,
+      has_file:     game.has_file !== undefined ? !!game.has_file : !!game.html,
       author_name:  game.author_name  || '',
       author_emoji: game.author_emoji || '🎮',
       author_id:    game.author_id    || null,
       ts:           game.ts || Date.now(),
       edited_at:    game.editedAt || null,
     };
+    // Solo incluir html en el upsert si realmente hay HTML nuevo que guardar
+    if (!game._skipHtml) {
+      row.html = game.html || null;
+    }
     const { error } = await sb.from('games').upsert(row);
     if (error) console.error('Supabase saveGame error:', error);
     else console.log('✅ Guardado en Supabase:', game.name);
@@ -3601,7 +3604,8 @@ function makeCard(g, i = 0, scrollCard = false) {
   card.innerHTML = `
     <div class="card-thumb">
       ${g.thumbnail 
-        ? `<img class="card-thumb-img" src="${g.thumbnail}" alt="${g.name}">`
+        ? `<img class="card-thumb-img" src="${g.thumbnail}" alt="${g.name}" onerror="this.style.display='none';var cv=document.getElementById('thumb-fb-${g.id}');if(cv){cv.style.display='block';window._drawThumbFallback&&window._drawThumbFallback('${g.id}','${g.genre}',${JSON.stringify(g.name)});}">`
+          + `<canvas class="card-thumb-canvas" id="thumb-fb-${g.id}" width="280" height="157" style="display:none"></canvas>`
         : `<canvas class="card-thumb-canvas" id="thumb-${g.id}" width="280" height="157"></canvas>`}
       ${badge}
       <button class="card-like-btn ${g.fav?'faved':''}" onclick="event.stopPropagation();toggleFav('${g.id}')" title="Favorito">${g.fav ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'}</button>
@@ -3636,6 +3640,14 @@ function makeCard(g, i = 0, scrollCard = false) {
 
   return card;
 }
+
+// Fallback global para imágenes rotas en tarjetas
+window._drawThumbFallback = function(gameId, genre, name) {
+  const canvas = document.getElementById('thumb-fb-' + gameId);
+  if (!canvas) return;
+  const fakeGame = { id: gameId, genre: genre, name: name };
+  drawThumb(fakeGame, canvas);
+};
 
 function drawThumb(game, canvas) {
   if (!canvas) return;
@@ -4594,9 +4606,18 @@ async function saveGameEdit() {
     game.html = editPendingHtml;
     game.has_file = true;
     editPendingHtml = null;
+  } else {
+    // Si el juego ya tenía archivo pero el HTML no está en memoria (cargado lazy),
+    // NO sobreescribir has_file con false. Preservarlo desde la copia original.
+    // Forzamos que el upsert no toque el campo html si no cambió.
+    if (game.has_file && !game.html) {
+      // Guardamos sin el campo html para no borrarlo en Supabase
+      game._skipHtml = true;
+    }
   }
 
   await saveGame(game);
+  game._skipHtml = false;
   renderAll();
   renderHeroCarousel();
 
