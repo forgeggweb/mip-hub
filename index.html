@@ -5156,6 +5156,18 @@ function loadNotifications() {
       if (seen.has(n.gameId)) return false;
       seen.add(n.gameId);
       return true;
+    }).map(n => {
+      // Normalizar campos legacy: author_name → authorName, game.name → gameName
+      if (!n.authorName && n.author_name) n.authorName = n.author_name;
+      if (!n.authorName && n.authorname) n.authorName = n.authorname;
+      if (!n.gameName && n.game_name) n.gameName = n.game_name;
+      if (!n.gameName && n.name) n.gameName = n.name;
+      if (!n.authorAvatar && n.author_avatar) n.authorAvatar = n.author_avatar;
+      if (!n.authorAvatar && n.senderAvatar && n.type === 'new_game') n.authorAvatar = n.senderAvatar;
+      // Asegurar fallback
+      if (!n.authorName) n.authorName = 'Alguien';
+      if (!n.gameName && n.type === 'new_game') n.gameName = 'Un juego';
+      return n;
     });
   } catch { notifications = []; }
 }
@@ -5216,15 +5228,15 @@ function renderNotifList() {
     const timeAgo = getTimeAgo(n.ts);
     // Mostrar avatar del autor; si no, thumbnail del juego; si no, emoji de género
     const iconHtml = n.authorAvatar
-      ? `<img src="${n.authorAvatar}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">`
+      ? `<img src="${escHtml(n.authorAvatar)}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">`
       : n.thumbnail
-        ? `<img src="${n.thumbnail}" alt="">`
+        ? `<img src="${escHtml(n.thumbnail)}" alt="" style="width:36px;height:36px;border-radius:8px;object-fit:cover;">`
         : `<span style="font-size:20px">${genreEmoji[n.genre] || '🎮'}</span>`;
 
     item.innerHTML = `
       <div class="notif-item-icon">${iconHtml}</div>
       <div class="notif-item-body">
-        <div class="notif-item-text">🆕 <strong>${escHtml(n.authorName)}</strong> publicó <strong>${escHtml(n.gameName)}</strong></div>
+        <div class="notif-item-text">🆕 <strong>${escHtml(n.authorName || 'Alguien')}</strong> publicó <strong>${escHtml(n.gameName || 'Un juego')}</strong></div>
         <div class="notif-item-time">${timeAgo}</div>
       </div>`;
     list.appendChild(item);
@@ -6478,13 +6490,17 @@ renderNotifList = function() {
       item.onclick = () => { n.read = true; saveNotifications(); updateNotifBadge(); renderNotifList(); };
 
     } else {
-      const iconHtml = n.thumbnail
-        ? `<img src="${n.thumbnail}" alt="">`
-        : `<span style="font-size:20px">${genreEmoji[n.genre] || '🎮'}</span>`;
+      const iconHtml = n.authorAvatar
+        ? `<img src="${escHtml(n.authorAvatar)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;" onerror="this.style.display='none';this.nextSibling&&(this.nextSibling.style.display='inline')">`
+        : n.thumbnail
+          ? `<img src="${escHtml(n.thumbnail)}" alt="" style="width:36px;height:36px;border-radius:8px;object-fit:cover;">`
+          : `<span style="font-size:20px">${genreEmoji[n.genre] || '🎮'}</span>`;
+      const authorTxt = escHtml(n.authorName || 'Alguien');
+      const gameTxt = escHtml(n.gameName || 'Un juego');
       item.innerHTML = `
         <div class="notif-item-icon">${iconHtml}</div>
         <div class="notif-item-body">
-          <div class="notif-item-text">🆕 <strong>${escHtml(n.authorName)}</strong> publicó <strong>${escHtml(n.gameName)}</strong></div>
+          <div class="notif-item-text">🆕 <strong>${authorTxt}</strong> publicó <strong>${gameTxt}</strong></div>
           <div class="notif-item-time">${timeAgo}</div>
         </div>`;
       item.onclick = () => {
