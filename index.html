@@ -4453,7 +4453,7 @@ function closeProfile() {
   if (card) card.classList.remove('flipped');
 }
 
-function saveProfile() {
+async function saveProfile() {
   const name = (document.getElementById('profileUsernameInput').value || '').trim();
   if (!name) { toast('Ingresá un nombre de usuario', 'error'); return; }
   profile.username = name;
@@ -4462,15 +4462,42 @@ function saveProfile() {
   profile.country = document.getElementById('profileCountryInput').value.trim();
   saveProfileData();
   applyProfileToUI();
+  // Guardar en Supabase si hay sesión activa
+  if (currentUser) {
+    try {
+      await sb.from('profiles').upsert({
+        id: currentUser.id,
+        username: profile.username,
+        title: profile.title,
+        bio: profile.bio,
+        country: profile.country,
+        avatar_emoji: profile.avatarEmoji,
+        card_theme: profile.cardTheme,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'id' });
+    } catch(e) { console.warn('No se pudo guardar en Supabase:', e); }
+  }
   closeProfile();
   toast('✅ Perfil guardado', 'success');
 }
 
-// Siempre limpiar perfil guardado — se restaura después del login
-localStorage.removeItem(PROFILE_KEY);
-profile = { username: '', title: 'Game Designer', bio: '', country: '', avatarEmoji: '🎮', cardTheme: 1 };
+async function loadProfileFromSupabase(userId) {
+  try {
+    const { data, error } = await sb.from('profiles').select('*').eq('id', userId).single();
+    if (data && !error) {
+      profile.username = data.username || profile.username;
+      profile.title = data.title || profile.title;
+      profile.bio = data.bio || profile.bio;
+      profile.country = data.country || profile.country;
+      profile.avatarEmoji = data.avatar_emoji || profile.avatarEmoji;
+      profile.cardTheme = data.card_theme || profile.cardTheme;
+      saveProfileData();
+      applyProfileToUI();
+    }
+  } catch(e) { console.warn('No se pudo cargar perfil de Supabase:', e); }
+}
 
-// Apply profile on load
+// Apply profile on load (ya cargado desde localStorage arriba)
 applyProfileToUI();
 
 // ══════════════════════════════════════════════
@@ -4506,12 +4533,8 @@ function handleAuthUser(user) {
     if (loginBtn)  loginBtn.style.display  = 'none';
     if (logoutBtn) logoutBtn.style.display = 'block';
     if (authInfo) { authInfo.textContent = '✅ ' + shortEmail; authInfo.style.display = 'block'; }
-    // Actualizar nombre en perfil si no tiene uno personalizado
-    if (user.user_metadata?.username) {
-      profile.username = user.user_metadata.username;
-      saveProfileData();
-      applyProfileToUI();
-    }
+    // Cargar perfil desde Supabase (fuente de verdad)
+    loadProfileFromSupabase(user.id);
   } else {
     if (loginBtn)  loginBtn.style.display  = 'block';
     if (logoutBtn) logoutBtn.style.display = 'none';
