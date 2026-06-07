@@ -6049,13 +6049,17 @@ document.getElementById('creatorModal').addEventListener('click', function(e) {
 // ══════════════════════════════════════════════
 let _friendships = []; // cache local
 
-async function loadFriendships() {
+let _friendshipsCache = { ts: 0, userId: null };
+async function loadFriendships(force = false) {
   if (!currentUser) return;
+  const now = Date.now();
+  if (!force && _friendshipsCache.userId === currentUser.id && (now - _friendshipsCache.ts) < 15000) return;
   try {
     const { data } = await sb.from('friendships')
       .select('*')
       .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`);
     _friendships = data || [];
+    _friendshipsCache = { ts: Date.now(), userId: currentUser.id };
   } catch(e) { _friendships = []; }
 }
 
@@ -6100,7 +6104,7 @@ async function sendFriendRequest(targetUserId, targetName) {
       status: 'pending'
     });
     if (error) throw error;
-    await loadFriendships();
+    await loadFriendships(true);
     renderFriendButton(targetUserId, targetName);
     toast('✅ Solicitud enviada a ' + targetName, 'success');
     // Guardar notificación para el receptor en Supabase
@@ -6119,7 +6123,7 @@ async function acceptFriendRequest(senderId) {
       .update({ status: 'accepted' })
       .eq('sender_id', senderId)
       .eq('receiver_id', currentUser.id);
-    await loadFriendships();
+    await loadFriendships(true);
     renderFriendButton(senderId, '');
     toast('✅ ¡Ahora son amigos!', 'success');
     loadFriendNotifications();
@@ -6133,7 +6137,7 @@ async function rejectFriendRequest(senderId, notifId) {
       .update({ status: 'rejected' })
       .eq('sender_id', senderId)
       .eq('receiver_id', currentUser.id);
-    await loadFriendships();
+    await loadFriendships(true);
     // remove notif
     notifications = notifications.filter(n => n.id !== notifId);
     saveNotifications();
@@ -6149,7 +6153,7 @@ async function removeFriend(targetUserId, targetName) {
     await sb.from('friendships')
       .delete()
       .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${targetUserId}),and(sender_id.eq.${targetUserId},receiver_id.eq.${currentUser.id})`);
-    await loadFriendships();
+    await loadFriendships(true);
     renderFriendButton(targetUserId, targetName);
     renderFriendsList();
     toast('Amigo eliminado', 'info');
@@ -6383,6 +6387,7 @@ async function renderFriendsView() {
       .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`);
     if (error) throw error;
     _friendships = data || [];
+    _friendshipsCache = { ts: Date.now(), userId: currentUser.id };
   } catch(e) {
     container.innerHTML = `<div style="text-align:center;padding:40px;color:var(--red);">❌ Error al cargar amigos. Revisá tu conexión.</div>`;
     return;
