@@ -2210,8 +2210,204 @@ body::before {
   font-size: 10px; font-weight: 800; color: var(--text);
   padding: 5px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+/* ══════════════════════════════════════════
+   CHAT WIDGET
+══════════════════════════════════════════ */
+.chat-window {
+  width: 300px;
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  pointer-events: all;
+  animation: fadeInUp 0.25s ease;
+  max-height: 400px;
+}
+.chat-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--panel2);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.chat-header-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: linear-gradient(135deg,var(--accent),var(--accent2));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0; overflow: hidden;
+}
+.chat-header-avatar img { width:100%;height:100%;object-fit:cover; }
+.chat-header-name { font-size: 13px; font-weight: 800; flex: 1; }
+.chat-header-online { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); flex-shrink: 0; }
+.chat-header-close {
+  width: 22px; height: 22px; border-radius: 6px;
+  background: var(--panel3); border: none; color: var(--muted);
+  font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: all .15s;
+}
+.chat-header-close:hover { background: rgba(255,68,68,.2); color: var(--red); }
+.chat-messages {
+  flex: 1; overflow-y: auto; padding: 12px 10px;
+  display: flex; flex-direction: column; gap: 6px;
+  min-height: 180px;
+  scrollbar-width: thin;
+}
+.chat-msg {
+  max-width: 80%;
+  padding: 7px 11px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  word-break: break-word;
+}
+.chat-msg.mine {
+  align-self: flex-end;
+  background: linear-gradient(135deg, var(--accent), #0080ff);
+  color: #fff;
+  border-bottom-right-radius: 3px;
+}
+.chat-msg.theirs {
+  align-self: flex-start;
+  background: var(--panel3);
+  color: var(--text);
+  border-bottom-left-radius: 3px;
+}
+.chat-msg-time { font-size: 9px; opacity: 0.6; margin-top: 2px; }
+.chat-input-row {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.chat-input {
+  flex: 1;
+  background: var(--panel3);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 12px;
+  padding: 7px 10px;
+  outline: none;
+  font-family: 'Nunito', sans-serif;
+  transition: border-color .15s;
+}
+.chat-input:focus { border-color: var(--accent); }
+.chat-send-btn {
+  width: 32px; height: 32px;
+  background: var(--accent);
+  border: none; border-radius: 8px;
+  color: #000; font-size: 14px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity .15s; flex-shrink: 0;
+}
+.chat-send-btn:hover { opacity: .85; }
+/* Chat bubble (minimized) */
+.chat-bubble {
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border: 2px solid var(--panel);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0,180,255,.35);
+  transition: transform .15s;
+  position: relative;
+  pointer-events: all;
+  overflow: hidden;
+}
+.chat-bubble img { width:100%;height:100%;object-fit:cover;border-radius:50%; }
+.chat-bubble:hover { transform: scale(1.1); }
+.chat-bubble-badge {
+  position: absolute;
+  top: -2px; right: -2px;
+  width: 16px; height: 16px;
+  background: var(--red);
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 900;
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--bg);
+}
+/* Friends view */
+.friends-view-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+  margin-top: 8px;
+}
+.friend-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  transition: border-color .15s, transform .15s;
+  cursor: pointer;
+}
+.friend-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.friend-card-avatar {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: linear-gradient(135deg,var(--accent),var(--accent2));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; position: relative; overflow: hidden;
+}
+.friend-card-avatar img { width:100%;height:100%;object-fit:cover; }
+.friend-card-online {
+  position: absolute;
+  bottom: 2px; right: 2px;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--panel);
+}
+.friend-card-online.online { background: var(--green); }
+.friend-card-online.offline { background: var(--muted); }
+.friend-card-name { font-size: 14px; font-weight: 800; color: var(--text); }
+.friend-card-title { font-size: 11px; color: var(--accent); font-family: monospace; }
+.friend-card-actions { display: flex; gap: 6px; margin-top: 4px; }
+.friend-card-btn {
+  padding: 5px 14px; border-radius: 7px; border: none;
+  font-size: 11px; font-weight: 700; cursor: pointer;
+  font-family: 'Nunito', sans-serif; transition: opacity .15s;
+}
+.friend-card-btn.chat { background: var(--accent); color: #000; }
+.friend-card-btn.chat:hover { opacity: .85; }
+.friend-card-btn.remove { background: var(--panel3); color: var(--muted); border: 1px solid var(--border2); }
+.friend-card-btn.remove:hover { border-color: var(--red); color: var(--red); }
+/* Pending requests section */
+.pending-section { margin-bottom: 28px; }
+.pending-section-title { font-size: 13px; font-weight: 800; color: var(--text); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+.pending-list { display: flex; flex-direction: column; gap: 8px; }
+.pending-item {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--panel); border: 1px solid var(--border2);
+  border-radius: 12px; padding: 12px 14px;
+}
+.pending-item-avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--panel3); display: flex; align-items: center; justify-content: center;
+  font-size: 20px; flex-shrink: 0; overflow: hidden;
+}
+.pending-item-avatar img { width:100%;height:100%;object-fit:cover; }
+.pending-item-name { font-size: 13px; font-weight: 800; flex: 1; }
+.pending-item-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.notif-unread-msg {
+  background: rgba(0,180,255,0.1);
+  border-left: 3px solid var(--accent);
+}
 </style>
-</head>
 <body>
 
 <!-- ══════════════════ TOPBAR ══════════════════ -->
@@ -2226,6 +2422,7 @@ body::before {
     <button class="nav-btn" onclick="setMainTab('charts')">Charts</button>
     <button class="nav-btn" onclick="setMainTab('mine')">Mis Juegos</button>
     <button class="nav-btn" onclick="setMainTab('favs')">Favoritos</button>
+    <button class="nav-btn" onclick="setMainTab('friends')" id="friendsNavBtn" style="position:relative;">👥 Amigos<span id="friendsNavBadge" style="display:none;position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:var(--accent);"></span></button>
   </nav>
 
   <div class="topbar-search">
@@ -2396,7 +2593,28 @@ body::before {
     </div>
   </div>
 
+  <!-- FRIENDS VIEW -->
+  <div id="view-friends" style="display:none">
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title"><span class="accent-dot"></span>👥 Mis Amigos</div>
+      </div>
+      <div id="friendsViewContent">
+        <div style="text-align:center;padding:60px 20px;color:var(--muted);">
+          <div style="font-size:48px;margin-bottom:12px;">👥</div>
+          <div style="font-size:16px;font-weight:700;">Iniciá sesión para ver tus amigos</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
+
+<!-- ══════════════════ CHAT WIDGET ══════════════════ -->
+<div id="chatContainer" style="position:fixed;bottom:80px;right:24px;z-index:3000;display:flex;flex-direction:column;gap:8px;pointer-events:none;"></div>
+
+<!-- Chat button (friends online) -->
+<div id="chatBubbles" style="position:fixed;bottom:24px;right:24px;z-index:3000;display:flex;flex-direction:column;gap:6px;align-items:flex-end;"></div>
 
 <!-- ══════════════════ UPLOAD MODAL ══════════════════ -->
 <div class="modal-overlay" id="uploadModal">
@@ -3138,17 +3356,18 @@ function scrollToGrid() {
 // ══════════════════════════════════════════════
 function setMainTab(tab) {
   currentMainTab = tab;
-  ['home','charts','mine','favs'].forEach(v => {
+  ['home','charts','mine','favs','friends'].forEach(v => {
     document.getElementById('view-' + v).style.display = v === tab ? '' : 'none';
   });
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  const tabMap = {home:0,charts:1,mine:2,favs:3};
+  const tabMap = {home:0,charts:1,mine:2,favs:3,friends:4};
   const btns = document.querySelectorAll('.nav-btn');
   if (btns[tabMap[tab]]) btns[tabMap[tab]].classList.add('active');
 
   if (tab === 'charts') renderChartsGrid();
   if (tab === 'mine') renderMineGrid();
   if (tab === 'favs') renderFavsGrid();
+  if (tab === 'friends') renderFriendsView();
 }
 
 // ══════════════════════════════════════════════
@@ -5405,14 +5624,459 @@ async function renderFriendsList() {
     html += `<div class="friend-chip" onclick="closeProfile();openCreatorProfile('${escHtml(p.username || '')}')">
       <div class="friend-chip-avatar">${avatarHtml}</div>
       <span>${escHtml(p.username || 'Usuario')}</span>
+      <button onclick="event.stopPropagation();closeProfile();openChat('${p.id}','${escHtml(p.username||'Usuario')}','${escHtml(p.avatar_url||'')}','${escHtml(p.avatar_emoji||'🎮')}')" style="margin-left:4px;background:var(--accent);border:none;border-radius:5px;color:#000;font-size:10px;font-weight:700;padding:2px 7px;cursor:pointer;">💬</button>
     </div>`;
   }
   html += '</div></div>';
   section.innerHTML = html;
 }
 
-// Hook into renderNotifList to show friend request actions
-const _origRenderNotifList = renderNotifList;
+</script>
+
+<script>
+// ══════════════════════════════════════════════
+//  FRIENDS VIEW
+// ══════════════════════════════════════════════
+async function renderFriendsView() {
+  const container = document.getElementById('friendsViewContent');
+  if (!container) return;
+
+  if (!currentUser) {
+    container.innerHTML = `<div style="text-align:center;padding:60px 20px;color:var(--muted);">
+      <div style="font-size:48px;margin-bottom:12px;">👥</div>
+      <div style="font-size:16px;font-weight:700;">Iniciá sesión para ver tus amigos</div>
+    </div>`;
+    return;
+  }
+
+  container.innerHTML = `<div style="text-align:center;padding:30px;color:var(--muted);">Cargando amigos...</div>`;
+  await loadFriendships();
+
+  const accepted = _friendships.filter(f => f.status === 'accepted');
+  const pending  = _friendships.filter(f => f.status === 'pending' && f.receiver_id === currentUser.id);
+
+  // Build pending requests section
+  let pendingHtml = '';
+  if (pending.length > 0) {
+    const senderIds = pending.map(f => f.sender_id);
+    const { data: pendingProfs } = await sb.from('profiles').select('id,username,avatar_url,avatar_emoji,title').in('id', senderIds);
+    pendingHtml = `<div class="pending-section">
+      <div class="pending-section-title">📨 Solicitudes pendientes <span style="background:var(--accent);color:#000;border-radius:99px;padding:1px 8px;font-size:11px;">${pending.length}</span></div>
+      <div class="pending-list">`;
+    for (const f of pending) {
+      const prof = (pendingProfs||[]).find(p => p.id === f.sender_id) || {};
+      const avatarHtml = prof.avatar_url
+        ? `<img src="${escHtml(prof.avatar_url)}" alt="">`
+        : `<span>${prof.avatar_emoji||'👤'}</span>`;
+      pendingHtml += `<div class="pending-item">
+        <div class="pending-item-avatar">${avatarHtml}</div>
+        <div class="pending-item-name">${escHtml(prof.username||'Usuario')}</div>
+        <div class="pending-item-actions">
+          <button class="notif-friend-btn accept" onclick="acceptFriendRequest('${f.sender_id}');renderFriendsView()">✅ Aceptar</button>
+          <button class="notif-friend-btn reject" onclick="rejectFriendRequest('${f.sender_id}','');renderFriendsView()">✕</button>
+        </div>
+      </div>`;
+    }
+    pendingHtml += `</div></div>`;
+  }
+
+  if (accepted.length === 0 && pending.length === 0) {
+    container.innerHTML = `<div style="text-align:center;padding:60px 20px;color:var(--muted);">
+      <div style="font-size:48px;margin-bottom:12px;">👥</div>
+      <div style="font-size:16px;font-weight:700;">Todavía no tenés amigos</div>
+      <div style="font-size:13px;margin-top:6px;">Buscá creadores y enviá solicitudes de amistad</div>
+    </div>`;
+    return;
+  }
+
+  if (accepted.length === 0) {
+    container.innerHTML = pendingHtml;
+    return;
+  }
+
+  const friendIds = accepted.map(f => f.sender_id === currentUser.id ? f.receiver_id : f.sender_id);
+  const { data: profs } = await sb.from('profiles').select('id,username,avatar_url,avatar_emoji,title,last_seen').in('id', friendIds);
+  const now = Date.now();
+
+  let friendsHtml = `<div class="friends-view-grid">`;
+  for (const p of (profs||[])) {
+    const avatarHtml = p.avatar_url
+      ? `<img src="${escHtml(p.avatar_url)}" alt="">`
+      : `<span>${p.avatar_emoji||'🎮'}</span>`;
+    const isOnline = p.last_seen && (now - new Date(p.last_seen).getTime()) < 5 * 60 * 1000;
+    friendsHtml += `<div class="friend-card" onclick="openCreatorProfile('${escHtml(p.username||'')}')">
+      <div class="friend-card-avatar">
+        ${avatarHtml}
+        <div class="friend-card-online ${isOnline?'online':'offline'}"></div>
+      </div>
+      <div class="friend-card-name">${escHtml(p.username||'Usuario')}</div>
+      <div class="friend-card-title">${escHtml(p.title||'Game Creator')}</div>
+      <div style="font-size:10px;color:${isOnline?'var(--green)':'var(--muted)'};">${isOnline?'🟢 En línea':'⚫ Desconectado'}</div>
+      <div class="friend-card-actions" onclick="event.stopPropagation()">
+        <button class="friend-card-btn chat" onclick="openChat('${p.id}','${escHtml(p.username||'Usuario')}','${escHtml(p.avatar_url||'')}','${escHtml(p.avatar_emoji||'🎮')}')">💬 Chat</button>
+        <button class="friend-card-btn remove" onclick="removeFriend('${p.id}','${escHtml(p.username||'')}');setTimeout(renderFriendsView,500)">✕</button>
+      </div>
+    </div>`;
+  }
+  friendsHtml += `</div>`;
+
+  container.innerHTML = pendingHtml + friendsHtml;
+}
+
+// ══════════════════════════════════════════════
+//  CHAT SYSTEM
+// ══════════════════════════════════════════════
+let openChats = {}; // key: friendId => {el, minimized, unread}
+let chatMessages = {}; // key: friendId => [{id, senderId, text, ts}]
+let chatRealtimeChannels = {};
+
+function getChatId(userId1, userId2) {
+  return [userId1, userId2].sort().join('_');
+}
+
+async function openChat(friendId, friendName, friendAvatar, friendEmoji) {
+  if (!currentUser) { toast('Iniciá sesión para chatear', 'error'); return; }
+
+  // If already open, just focus
+  if (openChats[friendId]) {
+    openChats[friendId].minimized = false;
+    renderChatWindow(friendId);
+    return;
+  }
+
+  openChats[friendId] = { friendName, friendAvatar, friendEmoji, minimized: false, unread: 0 };
+  chatMessages[friendId] = [];
+
+  // Load messages from Supabase
+  const chatId = getChatId(currentUser.id, friendId);
+  try {
+    const { data } = await sb.from('messages')
+      .select('*')
+      .eq('chat_id', chatId)
+      .order('created_at', { ascending: true })
+      .limit(50);
+    chatMessages[friendId] = (data || []).map(m => ({
+      id: m.id,
+      senderId: m.sender_id,
+      text: m.content,
+      ts: new Date(m.created_at).getTime()
+    }));
+  } catch(e) {}
+
+  renderChatWindow(friendId);
+  subscribeChatRealtime(friendId, chatId);
+  markMessagesRead(friendId, chatId);
+}
+
+function subscribeChatRealtime(friendId, chatId) {
+  if (chatRealtimeChannels[friendId]) return;
+  try {
+    const ch = sb.channel('chat_' + chatId)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: 'chat_id=eq.' + chatId
+      }, (payload) => {
+        const m = payload.new;
+        if (!m) return;
+        const msg = { id: m.id, senderId: m.sender_id, text: m.content, ts: new Date(m.created_at).getTime() };
+        if (!chatMessages[friendId]) chatMessages[friendId] = [];
+        // Avoid duplicates
+        if (!chatMessages[friendId].find(x => x.id === m.id)) {
+          chatMessages[friendId].push(msg);
+          if (m.sender_id !== currentUser.id) {
+            // Notification
+            if (openChats[friendId] && !openChats[friendId].minimized) {
+              // Chat is open, mark read
+              markMessagesRead(friendId, chatId);
+            } else {
+              // Show notification
+              openChats[friendId] = openChats[friendId] || { friendName: 'Amigo', minimized: true, unread: 0 };
+              openChats[friendId].unread = (openChats[friendId].unread || 0) + 1;
+              showMessageNotif(friendId, m.sender_id, m.content);
+            }
+          }
+          if (openChats[friendId] && !openChats[friendId].minimized) {
+            renderChatMessages(friendId);
+          }
+          renderChatBubbles();
+        }
+      })
+      .subscribe();
+    chatRealtimeChannels[friendId] = ch;
+  } catch(e) {}
+}
+
+async function markMessagesRead(friendId, chatId) {
+  if (!currentUser || !chatId) return;
+  try {
+    await sb.from('messages')
+      .update({ read: true })
+      .eq('chat_id', chatId)
+      .eq('sender_id', friendId)
+      .eq('read', false);
+  } catch(e) {}
+}
+
+async function showMessageNotif(friendId, senderId, text) {
+  // Get sender profile
+  let senderName = openChats[friendId]?.friendName || 'Amigo';
+  let senderAvatar = openChats[friendId]?.friendAvatar || null;
+  let senderEmoji = openChats[friendId]?.friendEmoji || '🎮';
+
+  if (!senderName || senderName === 'Amigo') {
+    try {
+      const { data } = await sb.from('profiles').select('username,avatar_url,avatar_emoji').eq('id', senderId).single();
+      if (data) {
+        senderName = data.username || 'Alguien';
+        senderAvatar = data.avatar_url || null;
+        senderEmoji = data.avatar_emoji || '🎮';
+        if (openChats[friendId]) {
+          openChats[friendId].friendName = senderName;
+          openChats[friendId].friendAvatar = senderAvatar;
+          openChats[friendId].friendEmoji = senderEmoji;
+        }
+      }
+    } catch(e) {}
+  }
+
+  // Add to notifications list
+  const notifId = 'msg_' + friendId + '_' + Date.now();
+  const avatarHtml = senderAvatar
+    ? `<img src="${escHtml(senderAvatar)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">`
+    : `<span style="font-size:20px">${senderEmoji}</span>`;
+
+  notifications.unshift({
+    id: notifId,
+    type: 'chat_message',
+    friendId,
+    senderName,
+    senderAvatar,
+    senderEmoji,
+    text: text.length > 40 ? text.slice(0,37)+'...' : text,
+    ts: Date.now(),
+    read: false,
+  });
+  saveNotifications();
+  updateNotifBadge();
+  renderNotifList();
+  toast(`💬 <strong>${senderName}</strong>: ${text.length > 30 ? text.slice(0,27)+'...' : text}`, 'info');
+}
+
+function renderChatBubbles() {
+  const container = document.getElementById('chatBubbles');
+  if (!container) return;
+
+  const minimized = Object.entries(openChats).filter(([id, c]) => c.minimized);
+  container.innerHTML = '';
+  minimized.forEach(([friendId, chat]) => {
+    const div = document.createElement('div');
+    div.className = 'chat-bubble';
+    div.title = chat.friendName;
+    div.onclick = () => { openChats[friendId].minimized = false; openChats[friendId].unread = 0; renderChatWindow(friendId); renderChatBubbles(); };
+    if (chat.friendAvatar) {
+      div.innerHTML = `<img src="${escHtml(chat.friendAvatar)}" alt="">`;
+    } else {
+      div.textContent = chat.friendEmoji || '🎮';
+    }
+    if (chat.unread > 0) {
+      div.innerHTML += `<div class="chat-bubble-badge">${chat.unread}</div>`;
+    }
+    container.appendChild(div);
+  });
+}
+
+function renderChatWindow(friendId) {
+  const chatData = openChats[friendId];
+  if (!chatData) return;
+  const container = document.getElementById('chatContainer');
+  if (!container) return;
+
+  // Remove old window for this friend
+  const existing = document.getElementById('chat_' + friendId);
+  if (existing) existing.remove();
+
+  if (chatData.minimized) { renderChatBubbles(); return; }
+
+  const win = document.createElement('div');
+  win.className = 'chat-window';
+  win.id = 'chat_' + friendId;
+
+  const avatarHtml = chatData.friendAvatar
+    ? `<img src="${escHtml(chatData.friendAvatar)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
+    : `<span style="font-size:16px;">${chatData.friendEmoji||'🎮'}</span>`;
+
+  win.innerHTML = `
+    <div class="chat-header" onclick="">
+      <div class="chat-header-avatar">${avatarHtml}</div>
+      <div class="chat-header-name">${escHtml(chatData.friendName)}</div>
+      <button class="chat-header-close" onclick="minimizeChat('${friendId}')" title="Minimizar">—</button>
+      <button class="chat-header-close" onclick="closeChat('${friendId}')" title="Cerrar" style="margin-left:2px;">✕</button>
+    </div>
+    <div class="chat-messages" id="chatMsgs_${friendId}"></div>
+    <div class="chat-input-row">
+      <input class="chat-input" id="chatInput_${friendId}" placeholder="Escribí algo..." maxlength="500"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMessage('${friendId}')}">
+      <button class="chat-send-btn" onclick="sendChatMessage('${friendId}')">➤</button>
+    </div>`;
+
+  container.appendChild(win);
+  renderChatMessages(friendId);
+  setTimeout(() => {
+    const input = document.getElementById('chatInput_' + friendId);
+    if (input) input.focus();
+  }, 80);
+}
+
+function renderChatMessages(friendId) {
+  const container = document.getElementById('chatMsgs_' + friendId);
+  if (!container || !currentUser) return;
+  const msgs = chatMessages[friendId] || [];
+
+  if (msgs.length === 0) {
+    container.innerHTML = `<div style="text-align:center;color:var(--muted);font-size:12px;margin:auto;">¡Empezá la conversación! 👋</div>`;
+    return;
+  }
+
+  container.innerHTML = msgs.map(m => {
+    const isMine = m.senderId === currentUser.id;
+    const timeStr = new Date(m.ts).toLocaleTimeString('es-AR', {hour:'2-digit',minute:'2-digit'});
+    return `<div class="chat-msg ${isMine?'mine':'theirs'}">
+      ${escHtml(m.text)}
+      <div class="chat-msg-time">${timeStr}</div>
+    </div>`;
+  }).join('');
+
+  container.scrollTop = container.scrollHeight;
+}
+
+function minimizeChat(friendId) {
+  if (openChats[friendId]) openChats[friendId].minimized = true;
+  const win = document.getElementById('chat_' + friendId);
+  if (win) win.remove();
+  renderChatBubbles();
+}
+
+function closeChat(friendId) {
+  delete openChats[friendId];
+  const win = document.getElementById('chat_' + friendId);
+  if (win) win.remove();
+  if (chatRealtimeChannels[friendId]) {
+    try { sb.removeChannel(chatRealtimeChannels[friendId]); } catch(e) {}
+    delete chatRealtimeChannels[friendId];
+  }
+  renderChatBubbles();
+}
+
+async function sendChatMessage(friendId) {
+  if (!currentUser) return;
+  const input = document.getElementById('chatInput_' + friendId);
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+
+  const chatId = getChatId(currentUser.id, friendId);
+  const tempId = 'tmp_' + Date.now();
+  const msg = { id: tempId, senderId: currentUser.id, text, ts: Date.now() };
+
+  if (!chatMessages[friendId]) chatMessages[friendId] = [];
+  chatMessages[friendId].push(msg);
+  renderChatMessages(friendId);
+
+  try {
+    const { data, error } = await sb.from('messages').insert({
+      chat_id: chatId,
+      sender_id: currentUser.id,
+      receiver_id: friendId,
+      content: text,
+      read: false
+    }).select().single();
+    if (!error && data) {
+      // Replace temp with real
+      const idx = chatMessages[friendId].findIndex(m => m.id === tempId);
+      if (idx >= 0) chatMessages[friendId][idx].id = data.id;
+    }
+  } catch(e) {
+    toast('Error al enviar mensaje', 'error');
+  }
+}
+
+// ══════════════════════════════════════════════
+//  REALTIME — FRIEND ACCEPTED + MESSAGES (global)
+// ══════════════════════════════════════════════
+function initFriendAndChatRealtime() {
+  if (!currentUser) return;
+
+  // Listen for friendship updates (accepted)
+  try {
+    sb.channel('friendships_' + currentUser.id)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'friendships',
+        filter: 'sender_id=eq.' + currentUser.id
+      }, async (payload) => {
+        const f = payload.new;
+        if (f && f.status === 'accepted') {
+          // Someone accepted our request!
+          let accepterName = 'Alguien';
+          let accepterAvatar = null;
+          try {
+            const { data } = await sb.from('profiles').select('username,avatar_url,avatar_emoji').eq('id', f.receiver_id).single();
+            if (data) { accepterName = data.username || 'Alguien'; accepterAvatar = data.avatar_url; }
+          } catch(e) {}
+
+          // Add notification
+          const notifId = 'accepted_' + f.receiver_id + '_' + Date.now();
+          notifications.unshift({
+            id: notifId,
+            type: 'friend_accepted',
+            friendId: f.receiver_id,
+            senderName: accepterName,
+            senderAvatar: accepterAvatar,
+            ts: Date.now(),
+            read: false,
+          });
+          saveNotifications();
+          updateNotifBadge();
+          renderNotifList();
+          toast(`✅ <strong>${accepterName}</strong> aceptó tu solicitud de amistad!`, 'success');
+          await loadFriendships();
+          renderFriendsList();
+          if (document.getElementById('view-friends').style.display !== 'none') renderFriendsView();
+        }
+      })
+      .subscribe();
+  } catch(e) {}
+
+  // Subscribe to all chats with friends — listen for incoming messages
+  setTimeout(async () => {
+    await loadFriendships();
+    const accepted = _friendships.filter(f => f.status === 'accepted');
+    for (const f of accepted) {
+      const friendId = f.sender_id === currentUser.id ? f.receiver_id : f.sender_id;
+      const chatId = getChatId(currentUser.id, friendId);
+      if (!chatRealtimeChannels[friendId]) {
+        // Only subscribe if not already open (openChat handles it for open chats)
+        subscribeChatRealtime(friendId, chatId);
+      }
+    }
+  }, 2000);
+}
+
+// Hook into handleAuthUser to init realtime
+const _origHandleAuthUser = handleAuthUser;
+handleAuthUser = function(user) {
+  _origHandleAuthUser(user);
+  if (user) {
+    setTimeout(initFriendAndChatRealtime, 2500);
+  }
+};
+
+// Also hook renderNotifList to show chat messages & accepted friend notifs
+const _origRenderNotifListChat = renderNotifList;
 renderNotifList = function() {
   const list = document.getElementById('notifList');
   if (!list) return;
@@ -5423,7 +6087,8 @@ renderNotifList = function() {
   list.innerHTML = '';
   notifications.forEach(n => {
     const item = document.createElement('div');
-    item.className = 'notif-item' + (n.read ? '' : ' unread');
+    item.className = 'notif-item' + (n.read ? '' : ' unread') + (n.type==='chat_message' && !n.read ? ' notif-unread-msg' : '');
+
     const timeAgo = getTimeAgo(n.ts);
 
     if (n.type === 'friend_request') {
@@ -5440,6 +6105,35 @@ renderNotifList = function() {
             <button class="notif-friend-btn reject" onclick="event.stopPropagation();rejectFriendRequest('${n.senderId}','${n.id}')">✕ Rechazar</button>
           </div>
         </div>`;
+
+    } else if (n.type === 'friend_accepted') {
+      const avatarHtml = n.senderAvatar
+        ? `<img src="${escHtml(n.senderAvatar)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">`
+        : `<span style="font-size:20px">🤝</span>`;
+      item.innerHTML = `
+        <div class="notif-item-icon">${avatarHtml}</div>
+        <div class="notif-item-body">
+          <div class="notif-item-text">✅ <strong>${escHtml(n.senderName)}</strong> aceptó tu solicitud de amistad</div>
+          <div class="notif-item-time">${timeAgo}</div>
+        </div>`;
+      item.onclick = () => { n.read = true; saveNotifications(); updateNotifBadge(); renderNotifList(); };
+
+    } else if (n.type === 'chat_message') {
+      const avatarHtml = n.senderAvatar
+        ? `<img src="${escHtml(n.senderAvatar)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">`
+        : `<span style="font-size:20px">${n.senderEmoji||'💬'}</span>`;
+      item.innerHTML = `
+        <div class="notif-item-icon">${avatarHtml}</div>
+        <div class="notif-item-body">
+          <div class="notif-item-text">💬 <strong>${escHtml(n.senderName)}</strong>: ${escHtml(n.text)}</div>
+          <div class="notif-item-time">${timeAgo}</div>
+        </div>`;
+      item.onclick = () => {
+        n.read = true; saveNotifications(); updateNotifBadge(); renderNotifList();
+        closeNotifPanel();
+        openChat(n.friendId, n.senderName, n.senderAvatar, n.senderEmoji||'🎮');
+      };
+
     } else {
       const iconHtml = n.thumbnail
         ? `<img src="${n.thumbnail}" alt="">`
@@ -5459,7 +6153,11 @@ renderNotifList = function() {
     list.appendChild(item);
   });
 };
+
+// Also open chat from friend chip in profile
+function openChatFromChip(friendId, friendName) {
+  openChat(friendId, friendName, null, '🎮');
+}
 </script>
 
 </body>
-</html>
