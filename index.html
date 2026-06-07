@@ -5200,20 +5200,27 @@ document.addEventListener('click', (e) => {
 
 // Subscribe to Supabase realtime — only INSERT on games table
 let _notifRealtimeInited = false;
+let _notifChannel = null;
+
 function initNotifRealtime() {
   if (_notifRealtimeInited) return;
   _notifRealtimeInited = true;
   try {
-    sb.channel('public:games:notif')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'games' }, async (payload) => {
+    _notifChannel = sb.channel('notif-games-insert')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'games'
+      }, async (payload) => {
+        console.log('[NOTIF] Juego nuevo recibido por realtime:', payload.new);
         const game = payload.new;
         if (!game) return;
-        // Don't notify about own games
+        // No notificar juegos propios
         if (currentUser && game.author_id === currentUser.id) return;
-        // Avoid duplicate for same game id
+        // Evitar duplicados
         if (notifications.find(n => n.gameId === game.id)) return;
 
-        // Fetch author profile to get real name and avatar
+        // Buscar perfil del autor para nombre e imagen real
         let authorName = game.author_name || '';
         let authorAvatar = null;
         let authorEmoji = game.author_emoji || '🎮';
@@ -5228,16 +5235,63 @@ function initNotifRealtime() {
               authorAvatar = data.avatar_url || null;
               authorEmoji = data.avatar_emoji || authorEmoji;
             }
-          } catch(e) {}
+          } catch(e) { console.warn('[NOTIF] Error buscando perfil autor:', e); }
         }
         if (!authorName) authorName = 'Alguien';
 
         const enrichedGame = { ...game, author_name: authorName, author_emoji: authorEmoji, _authorAvatar: authorAvatar };
         addNotification(enrichedGame);
-        toast(`🆕 <strong>${authorName}</strong> publicó "${game.name}"`, 'success');
+        toast(`🆕 <strong>${authorName}</strong> publicó <strong>${game.name}</strong>`, 'success');
       })
-      .subscribe();
-  } catch(e) { console.warn('Notif realtime error:', e); }
+      .subscribe((status, err) => {
+        console.log('[NOTIF] Estado canal realtime:', status, err || '');
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('[NOTIF] Canal con error, reintentando en 5s...');
+          _notifRealtimeInited = false;
+          _notifChannel = null;
+          setTimeout(initNotifRealtime, 5000);
+        }
+      });
+    console.log('[NOTIF] Canal realtime suscrito: notif-games-insert');
+  } catch(e) { console.warn('[NOTIF] Error iniciando realtime:', e); }
+}
+
+// Fallback: comparar juegos nuevos vs los que ya conocemos (polling cada 30s)
+let _lastKnownGameIds = new Set();
+async function pollNewGames() {
+  try {
+    const { data } = await sb.from('games')
+      .select('id, name, author_name, author_emoji, author_id, thumbnail, genre')
+      .order('created_at', { ascending: false })
+      .limit(20);
+    if (!data) return;
+    const freshIds = data.map(g => g.id);
+    if (_lastKnownGameIds.size > 0) {
+      for (const game of data) {
+        if (!_lastKnownGameIds.has(game.id)) {
+          // Juego nuevo detectado por polling
+          if (currentUser && game.author_id === currentUser.id) continue;
+          if (notifications.find(n => n.gameId === game.id)) continue;
+          console.log('[NOTIF POLL] Juego nuevo detectado:', game.name);
+          let authorName = game.author_name || 'Alguien';
+          let authorAvatar = null;
+          let authorEmoji = game.author_emoji || '🎮';
+          if (game.author_id) {
+            try {
+              const { data: prof } = await sb.from('profiles')
+                .select('username, avatar_url, avatar_emoji')
+                .eq('id', game.author_id).single();
+              if (prof) { authorName = prof.username || authorName; authorAvatar = prof.avatar_url || null; authorEmoji = prof.avatar_emoji || authorEmoji; }
+            } catch(e) {}
+          }
+          const enrichedGame = { ...game, author_name: authorName, author_emoji: authorEmoji, _authorAvatar: authorAvatar };
+          addNotification(enrichedGame);
+          toast(`🆕 <strong>${authorName}</strong> publicó <strong>${game.name}</strong>`, 'success');
+        }
+      }
+    }
+    freshIds.forEach(id => _lastKnownGameIds.add(id));
+  } catch(e) {}
 }
 
 // Init notifications on load
@@ -5245,7 +5299,9 @@ loadNotifications();
 updateNotifBadge();
 renderNotifList();
 // Start realtime after a short delay to let Supabase init
-setTimeout(initNotifRealtime, 1500);
+setTimeout(initNotifRealtime, 2000);
+// Also start polling as fallback (runs every 30s)
+setTimeout(async () => { await pollNewGames(); setInterval(pollNewGames, 30000); }, 3000);
 
 </script>
 
