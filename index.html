@@ -2130,12 +2130,27 @@ body::before {
 .creator-stat-val { font-family: 'Fredoka One', cursive; font-size: 18px; color: #fff; }
 .creator-stat-lbl { font-size: 9px; font-weight: 700; color: var(--muted); text-transform: uppercase; }
 
-.creator-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 16px; }
+.creator-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
 .creator-tag {
   background: rgba(0,180,255,.1); border: 1px solid rgba(0,180,255,.25);
   color: var(--accent); border-radius: 999px; padding: 3px 10px;
   font-size: 10px; font-weight: 800;
 }
+.creator-meta-row {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px;
+}
+.creator-meta-item {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--panel2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 5px 10px;
+  font-size: 10px; font-weight: 700; color: var(--muted);
+}
+.creator-meta-item span { color: var(--text); }
+.creator-online-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+}
+.creator-online-dot.online { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.creator-online-dot.offline { background: var(--muted); }
 
 .creator-games-label {
   font-size: 11px; font-weight: 700; color: var(--muted);
@@ -4567,6 +4582,13 @@ function handleAuthUser(user) {
     if (authInfo) { authInfo.textContent = '✅ ' + shortEmail; authInfo.style.display = 'block'; }
     // Cargar perfil desde Supabase (fuente de verdad)
     loadProfileFromSupabase(user.id);
+    // Actualizar last_seen al entrar
+    sb.from('profiles').upsert({ id: user.id, last_seen: new Date().toISOString() }, { onConflict: 'id' });
+    // Actualizar last_seen cada 2 minutos mientras está activo
+    if (window._lastSeenInterval) clearInterval(window._lastSeenInterval);
+    window._lastSeenInterval = setInterval(() => {
+      if (currentUser) sb.from('profiles').upsert({ id: currentUser.id, last_seen: new Date().toISOString() }, { onConflict: 'id' });
+    }, 2 * 60 * 1000);
   } else {
     if (loginBtn)  loginBtn.style.display  = 'block';
     if (logoutBtn) logoutBtn.style.display = 'none';
@@ -4895,6 +4917,7 @@ setTimeout(initNotifRealtime, 1500);
           </div>
         </div>
         <div class="creator-tags" id="creatorTagsRow"></div>
+        <div class="creator-meta-row" id="creatorMetaRow"></div>
       </div>
     </div>
     <!-- Games by this creator -->
@@ -5004,6 +5027,69 @@ function openCreatorProfile(authorName) {
   const genres = [...new Set(creatorGames.map(g => g.genre).filter(Boolean))];
   document.getElementById('creatorTagsRow').innerHTML =
     genres.map(g => '<span class="creator-tag">' + (genreEmoji[g]||'🎮') + ' ' + g + '</span>').join('');
+
+  // Meta row — cargamos info extra desde Supabase
+  const metaRow = document.getElementById('creatorMetaRow');
+  if (metaRow) {
+    // Mientras carga mostramos placeholders
+    metaRow.innerHTML = '<div class="creator-meta-item">⏳ <span>Cargando info...</span></div>';
+
+    // Buscar author_id: si es el usuario logueado lo tenemos, sino buscamos en los juegos
+    const authorId = isMe
+      ? currentUser?.id
+      : (creatorGames[0]?.author_id || null);
+
+    if (authorId) {
+      sb.from('profiles').select('created_at, last_seen, country').eq('id', authorId).single()
+        .then(({ data, error }) => {
+          if (error || !data) { metaRow.innerHTML = ''; return; }
+
+          const now = new Date();
+          const lastSeen = data.last_seen ? new Date(data.last_seen) : null;
+          const createdAt = data.created_at ? new Date(data.created_at) : null;
+
+          // Online si last_seen hace menos de 5 minutos
+          const isOnline = lastSeen && (now - lastSeen) < 5 * 60 * 1000;
+          const minutesAgo = lastSeen ? Math.floor((now - lastSeen) / 60000) : null;
+          const hoursAgo = lastSeen ? Math.floor((now - lastSeen) / 3600000) : null;
+          const daysAgo = lastSeen ? Math.floor((now - lastSeen) / 86400000) : null;
+
+          let lastSeenText = 'Nunca';
+          if (lastSeen) {
+            if (isOnline) lastSeenText = 'Ahora mismo';
+            else if (minutesAgo < 60) lastSeenText = 'Hace ' + minutesAgo + ' min';
+            else if (hoursAgo < 24) lastSeenText = 'Hace ' + hoursAgo + 'h';
+            else if (daysAgo < 30) lastSeenText = 'Hace ' + daysAgo + ' días';
+            else lastSeenText = lastSeen.toLocaleDateString('es-AR', {day:'numeric', month:'short', year:'numeric'});
+          }
+
+          let joinedText = '—';
+          if (createdAt) {
+            joinedText = createdAt.toLocaleDateString('es-AR', {day:'numeric', month:'short', year:'numeric'});
+          }
+
+          let html = '';
+          // Online status
+          html += '<div class="creator-meta-item">'
+            + '<div class="creator-online-dot ' + (isOnline ? 'online' : 'offline') + '"></div>'
+            + '<span>' + (isOnline ? 'En línea' : lastSeenText) + '</span>'
+            + '</div>';
+          // Fecha de registro
+          html += '<div class="creator-meta-item">📅 Desde <span>' + joinedText + '</span></div>';
+          // País
+          if (data.country) {
+            html += '<div class="creator-meta-item">🌍 <span>' + data.country + '</span></div>';
+          }
+          // Total jugadas
+          html += '<div class="creator-meta-item">🎮 <span>' + totalPlays + ' jugadas totales</span></div>';
+
+          metaRow.innerHTML = html;
+        });
+    } else {
+      // Sin author_id solo mostramos jugadas
+      metaRow.innerHTML = '<div class="creator-meta-item">🎮 <span>' + totalPlays + ' jugadas totales</span></div>';
+    }
+  }
 
   const scroll = document.getElementById('creatorGamesScroll');
   scroll.innerHTML = '';
