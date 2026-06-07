@@ -2616,6 +2616,87 @@ body::before {
 <!-- Chat button (friends online) -->
 <div id="chatBubbles" style="position:fixed;bottom:24px;right:24px;z-index:3000;display:flex;flex-direction:column;gap:6px;align-items:flex-end;"></div>
 
+<script>
+// ══════════════════════════════════════════════
+//  DRAG HELPER — para chat windows y burbujas
+// ══════════════════════════════════════════════
+function makeDraggable(el, handleEl) {
+  // Detach from flow: convert to fixed position at current coords
+  function detachToFixed() {
+    if (el.dataset.dragging === 'fixed') return;
+    const rect = el.getBoundingClientRect();
+    el.style.position = 'fixed';
+    el.style.left = rect.left + 'px';
+    el.style.top  = rect.top  + 'px';
+    el.style.right  = 'auto';
+    el.style.bottom = 'auto';
+    el.style.margin = '0';
+    el.dataset.dragging = 'fixed';
+    // Remove from flex container so it floats freely
+    document.body.appendChild(el);
+  }
+
+  let startX, startY, startLeft, startTop, dragged = false;
+
+  handleEl.style.cursor = 'grab';
+
+  handleEl.addEventListener('mousedown', onDown);
+  handleEl.addEventListener('touchstart', onDown, { passive: false });
+
+  function onDown(e) {
+    // Don't drag if clicking a button inside the header
+    if (e.target.tagName === 'BUTTON') return;
+
+    detachToFixed();
+    dragged = false;
+
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    startX = clientX;
+    startY = clientY;
+    startLeft = parseInt(el.style.left) || 0;
+    startTop  = parseInt(el.style.top)  || 0;
+
+    handleEl.style.cursor = 'grabbing';
+    el.style.transition = 'none';
+    el.style.zIndex = 9999;
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup',   onUp);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend',  onUp);
+    e.preventDefault();
+  }
+
+  function onMove(e) {
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const dx = clientX - startX;
+    const dy = clientY - startY;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragged = true;
+
+    // Clamp to viewport
+    const maxX = window.innerWidth  - el.offsetWidth;
+    const maxY = window.innerHeight - el.offsetHeight;
+    const newLeft = Math.max(0, Math.min(maxX, startLeft + dx));
+    const newTop  = Math.max(0, Math.min(maxY, startTop  + dy));
+
+    el.style.left = newLeft + 'px';
+    el.style.top  = newTop  + 'px';
+    e.preventDefault();
+  }
+
+  function onUp() {
+    handleEl.style.cursor = 'grab';
+    el.style.zIndex = 3000;
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup',   onUp);
+    document.removeEventListener('touchmove', onMove);
+    document.removeEventListener('touchend',  onUp);
+  }
+}
+</script>
+
 <!-- ══════════════════ UPLOAD MODAL ══════════════════ -->
 <div class="modal-overlay" id="uploadModal">
   <div class="modal">
@@ -5315,13 +5396,28 @@ function openCreatorProfile(authorName) {
     function showProfileData(data) {
       if (!data) { metaRow.innerHTML = '<div class="creator-meta-item">🎮 <span>' + totalPlays + ' jugadas totales</span></div>'; return; }
 
-      // Cargar imagen del creador si tiene
-      if (!isMe && data.avatar_url) {
-        if (imgEl) {
-          imgEl.src = data.avatar_url;
-          imgEl.style.display = 'block';
-          imgEl.onerror = () => { imgEl.style.display = 'none'; if (emojiEl) emojiEl.style.display = 'block'; };
-          if (emojiEl) emojiEl.style.display = 'none';
+      // Cargar imagen del creador si tiene — actualizar AMBOS: mini card + header grande
+      if (!isMe) {
+        // Actualizar emoji si viene del perfil
+        if (data.avatar_emoji) {
+          const emojiElNow = document.getElementById('creatorAvatarEmoji');
+          if (emojiElNow) emojiElNow.textContent = data.avatar_emoji;
+        }
+        if (data.avatar_url) {
+          // Mini card
+          const imgElNow = document.getElementById('creatorAvatarImg');
+          const emojiElNow = document.getElementById('creatorAvatarEmoji');
+          if (imgElNow) {
+            imgElNow.src = data.avatar_url;
+            imgElNow.style.display = 'block';
+            imgElNow.onerror = () => { imgElNow.style.display = 'none'; if (emojiElNow) emojiElNow.style.display = 'block'; };
+            if (emojiElNow) emojiElNow.style.display = 'none';
+          }
+          // También buscar si hay otro img del creatorAvatarImg en el clone
+          document.querySelectorAll('[id^="creatorAvatarImg"]').forEach(el => {
+            el.src = data.avatar_url;
+            el.style.display = 'block';
+          });
         }
       }
 
@@ -5363,11 +5459,11 @@ function openCreatorProfile(authorName) {
 
     if (authorId) {
       // Buscar por ID
-      sb.from('profiles').select('created_at, last_seen, country, avatar_url, bio, title').eq('id', authorId).single()
+      sb.from('profiles').select('created_at, last_seen, country, avatar_url, avatar_emoji, bio, title').eq('id', authorId).single()
         .then(({ data, error }) => showProfileData(error ? null : data));
     } else {
       // Buscar por username como fallback
-      sb.from('profiles').select('created_at, last_seen, country, avatar_url, bio, title').ilike('username', authorName.trim()).single()
+      sb.from('profiles').select('created_at, last_seen, country, avatar_url, avatar_emoji, bio, title').ilike('username', authorName.trim()).single()
         .then(({ data, error }) => showProfileData(error ? null : data));
     }
   }
@@ -5911,16 +6007,27 @@ function renderChatBubbles() {
     const div = document.createElement('div');
     div.className = 'chat-bubble';
     div.title = chat.friendName;
-    div.onclick = () => { openChats[friendId].minimized = false; openChats[friendId].unread = 0; renderChatWindow(friendId); renderChatBubbles(); };
     if (chat.friendAvatar) {
       div.innerHTML = `<img src="${escHtml(chat.friendAvatar)}" alt="">`;
     } else {
-      div.textContent = chat.friendEmoji || '🎮';
+      div.innerHTML = `<span style="font-family:'Fredoka One',cursive;font-size:13px;letter-spacing:1px;color:#fff;">MiP</span>`;
     }
     if (chat.unread > 0) {
       div.innerHTML += `<div class="chat-bubble-badge">${chat.unread}</div>`;
     }
+    // Click to open — only if not dragged
+    let bubbleDragged = false;
+    div.addEventListener('mousedown', () => { bubbleDragged = false; });
+    div.addEventListener('mousemove', () => { bubbleDragged = true; });
+    div.addEventListener('click', () => {
+      if (bubbleDragged) return;
+      openChats[friendId].minimized = false;
+      openChats[friendId].unread = 0;
+      renderChatWindow(friendId);
+      renderChatBubbles();
+    });
     container.appendChild(div);
+    makeDraggable(div, div);
   });
 }
 
@@ -5942,7 +6049,7 @@ function renderChatWindow(friendId) {
 
   const avatarHtml = chatData.friendAvatar
     ? `<img src="${escHtml(chatData.friendAvatar)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
-    : `<span style="font-size:16px;">${chatData.friendEmoji||'🎮'}</span>`;
+    : `<span style="font-family:'Fredoka One',cursive;font-size:11px;letter-spacing:1px;color:#fff;">MiP</span>`;
 
   win.innerHTML = `
     <div class="chat-header" onclick="">
@@ -5960,6 +6067,8 @@ function renderChatWindow(friendId) {
 
   container.appendChild(win);
   renderChatMessages(friendId);
+  // Make the window draggable by its header
+  makeDraggable(win, win.querySelector('.chat-header'));
   setTimeout(() => {
     const input = document.getElementById('chatInput_' + friendId);
     if (input) input.focus();
@@ -6131,7 +6240,7 @@ renderNotifList = function() {
     if (n.type === 'friend_request') {
       const avatarHtml = n.senderAvatar
         ? `<img src="${escHtml(n.senderAvatar)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">`
-        : `<span style="font-size:20px">👤</span>`;
+        : `<span style="font-family:'Fredoka One',cursive;font-size:12px;color:#fff;letter-spacing:1px;">MiP</span>`;
       item.innerHTML = `
         <div class="notif-item-icon">${avatarHtml}</div>
         <div class="notif-item-body">
@@ -6146,7 +6255,7 @@ renderNotifList = function() {
     } else if (n.type === 'friend_accepted') {
       const avatarHtml = n.senderAvatar
         ? `<img src="${escHtml(n.senderAvatar)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">`
-        : `<span style="font-size:20px">🤝</span>`;
+        : `<span style="font-family:'Fredoka One',cursive;font-size:12px;color:#fff;letter-spacing:1px;">MiP</span>`;
       item.innerHTML = `
         <div class="notif-item-icon">${avatarHtml}</div>
         <div class="notif-item-body">
@@ -6158,7 +6267,7 @@ renderNotifList = function() {
     } else if (n.type === 'chat_message') {
       const avatarHtml = n.senderAvatar
         ? `<img src="${escHtml(n.senderAvatar)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">`
-        : `<span style="font-size:20px">${n.senderEmoji||'💬'}</span>`;
+        : `<span style="font-family:'Fredoka One',cursive;font-size:12px;color:#fff;letter-spacing:1px;">MiP</span>`;
       item.innerHTML = `
         <div class="notif-item-icon">${avatarHtml}</div>
         <div class="notif-item-body">
