@@ -4317,37 +4317,34 @@ async function loadTopPlayers() {
   }
   container.innerHTML = '<div class="top-players-loading"><div class="tp-spinner"></div><span>Cargando ranking...</span></div>';
   try {
-    const { data, error } = await sb.from("profiles")
-      .select("id, username, avatar_url, avatar_emoji, total_plays, total_likes, games_count")
-      .order("total_plays", { ascending: false })
-      .limit(3);
-    if (error || !data || data.length === 0) {
-      // Fallback: calcular desde games table
-      const { data: gamesData } = await sb.from("games")
-        .select("author_id, author_name, author_emoji, plays, likes")
-        .not("author_id", "is", null);
-      if (!gamesData || gamesData.length === 0) { container.innerHTML = ""; return; }
-      const map = {};
-      gamesData.forEach(g => {
-        if (!map[g.author_id]) map[g.author_id] = { id: g.author_id, username: g.author_name || "Jugador", avatar_emoji: g.author_emoji || "🎮", total_plays: 0, total_likes: 0, games_count: 0 };
-        map[g.author_id].total_plays += (g.plays || 0);
-        map[g.author_id].total_likes += (g.likes || 0);
-        map[g.author_id].games_count++;
-      });
-      const top3 = Object.values(map).sort((a, b) => b.total_plays - a.total_plays).slice(0, 3);
-      // Enrich with profile avatars
-      const ids = top3.map(p => p.id);
-      const { data: profs } = await sb.from("profiles").select("id, avatar_url, avatar_emoji").in("id", ids);
+    // Siempre calcular stats desde games (profiles no tiene columnas denormalizadas)
+    const { data: gamesData, error: gErr } = await sb.from("games")
+      .select("author_id, author_name, author_emoji, plays, likes")
+      .not("author_id", "is", null);
+    if (gErr || !gamesData || gamesData.length === 0) { container.innerHTML = ""; return; }
+    const map = {};
+    gamesData.forEach(g => {
+      if (!map[g.author_id]) map[g.author_id] = { id: g.author_id, username: g.author_name || "Jugador", avatar_emoji: g.author_emoji || "🎮", total_plays: 0, total_likes: 0, games_count: 0 };
+      map[g.author_id].total_plays += (g.plays || 0);
+      map[g.author_id].total_likes += (g.likes || 0);
+      map[g.author_id].games_count++;
+    });
+    const top3 = Object.values(map).sort((a, b) => b.total_plays - a.total_plays).slice(0, 3);
+    // Enriquecer con avatares de profiles
+    const ids = top3.map(p => p.id).filter(Boolean);
+    if (ids.length > 0) {
+      const { data: profs } = await sb.from("profiles").select("id, username, avatar_url, avatar_emoji").in("id", ids);
       top3.forEach(p => {
         const prof = profs && profs.find(r => r.id === p.id);
-        if (prof) { p.avatar_url = prof.avatar_url; p.avatar_emoji = prof.avatar_emoji || p.avatar_emoji; }
+        if (prof) {
+          p.avatar_url = prof.avatar_url || null;
+          p.avatar_emoji = prof.avatar_emoji || p.avatar_emoji;
+          p.username = prof.username || p.username;
+        }
       });
-      _topPlayersCache = { ts: Date.now(), data: top3 };
-      renderTopPlayers(top3, container);
-    } else {
-      _topPlayersCache = { ts: Date.now(), data };
-      renderTopPlayers(data, container);
     }
+    _topPlayersCache = { ts: Date.now(), data: top3 };
+    renderTopPlayers(top3, container);
   } catch(e) { container.innerHTML = ""; }
 }
 
@@ -4509,24 +4506,45 @@ function _openTopProfile(username, userId) {
   );
 
   if (isMe) {
-    // Just use own openProfile for self
+    // Para el usuario propio, abrir su perfil directamente
     modal.classList.remove('open');
-    openCreatorProfile(username, userId);
+    setTimeout(() => openProfile(), 50);
     return;
   }
 
-  // Fetch from Supabase directly
+  // Fetch from Supabase directly — usar maybeSingle() en vez de single() para evitar error 406
   const fetchProfile = userId
-    ? sb.from('profiles').select('id,username,avatar_url,avatar_emoji,bio,title,created_at,last_seen,country,card_theme,social_links,total_plays,total_likes,games_count').eq('id', userId).single()
-    : sb.from('profiles').select('id,username,avatar_url,avatar_emoji,bio,title,created_at,last_seen,country,card_theme,social_links,total_plays,total_likes,games_count').ilike('username', username).single();
+    ? sb.from('profiles').select('id,username,avatar_url,avatar_emoji,bio,title,created_at,last_seen,country,card_theme,social_links').eq('id', userId).maybeSingle()
+    : sb.from('profiles').select('id,username,avatar_url,avatar_emoji,bio,title,created_at,last_seen,country,card_theme,social_links').ilike('username', username).maybeSingle();
 
   fetchProfile.then(({ data, error }) => {
+    // Si no hay perfil en Supabase, construir desde datos del juego en memoria
+    if (error || !data) {
+      const fallbackGames = games.filter(g =>
+        (userId && g.author_id === userId) ||
+        (username && (g.author_name||'').toLowerCase() === username.trim().toLowerCase())
+      );
+      const fb = fallbackGames[0] || {};
+      data = {
+        id: userId || fb.author_id || '',
+        username: username || fb.author_name || 'Jugador',
+        avatar_emoji: fb.author_emoji || '🎮',
+        avatar_url: null,
+        bio: null, title: null, created_at: null, last_seen: null,
+        country: null, card_theme: null, social_links: null
+      };
+    }
     const d = data || {};
     const resolvedId = d.id || userId || '';
     const dname  = d.username || username || 'Jugador';
-    const tp     = d.total_plays || 0;
-    const tl     = d.total_likes || 0;
-    const gc     = d.games_count || 0;
+    // Calculate stats from local games array (profiles table may not have denormalized columns)
+    const localGamesForStats = games.filter(g =>
+      (resolvedId && g.author_id === resolvedId) ||
+      (dname && (g.author_name||'').toLowerCase() === dname.toLowerCase())
+    );
+    const tp     = localGamesForStats.reduce((s,g)=>s+(g.plays||0),0) || d.total_plays || 0;
+    const tl     = localGamesForStats.reduce((s,g)=>s+(g.likes||0),0) || d.total_likes || 0;
+    const gc     = localGamesForStats.length || d.games_count || 0;
     const lvl    = gc >= 20 ? '🔥 LEYENDA' : gc >= 10 ? '⚡ Experto' : gc >= 5 ? '🌟 Pro' : '⭐ Novato';
 
     if (cmUsEl)    cmUsEl.textContent    = dname;
@@ -4562,9 +4580,34 @@ function _openTopProfile(username, userId) {
 
     if (localGames.length > 0) {
       _renderTopProfileGames(localGames);
+      // Actualizar stats con datos reales si los locales son 0
+      if (tp === 0 && tl === 0) {
+        const realTp = localGames.reduce((s,g)=>s+(g.plays||0),0);
+        const realTl = localGames.reduce((s,g)=>s+(g.likes||0),0);
+        const realGc = localGames.length;
+        if (cmPlaysEl) cmPlaysEl.textContent = realTp >= 1000 ? (realTp/1000).toFixed(1)+'k' : realTp;
+        if (cmLikesEl) cmLikesEl.textContent = realTl >= 1000 ? (realTl/1000).toFixed(1)+'k' : realTl;
+        if (cmGamesEl) cmGamesEl.textContent = realGc;
+        const realLvl = realGc >= 20 ? '🔥 LEYENDA' : realGc >= 10 ? '⚡ Experto' : realGc >= 5 ? '🌟 Pro' : '⭐ Novato';
+        if (cmLvlEl) cmLvlEl.textContent = realLvl;
+      }
     } else if (resolvedId) {
       sb.from('games').select('id,name,thumbnail,genre,plays,likes').eq('author_id', resolvedId).limit(20)
-        .then(({ data: gd }) => { if (gd && gd.length) _renderTopProfileGames(gd); });
+        .then(({ data: gd }) => {
+          if (gd && gd.length) {
+            _renderTopProfileGames(gd);
+            // Actualizar stats con datos reales de Supabase
+            const realTp = gd.reduce((s,g)=>s+(g.plays||0),0);
+            const realTl = gd.reduce((s,g)=>s+(g.likes||0),0);
+            const realGc = gd.length;
+            if (cmPlaysEl) cmPlaysEl.textContent = realTp >= 1000 ? (realTp/1000).toFixed(1)+'k' : realTp;
+            if (cmLikesEl) cmLikesEl.textContent = realTl >= 1000 ? (realTl/1000).toFixed(1)+'k' : realTl;
+            if (cmGamesEl) cmGamesEl.textContent = realGc;
+            const realLvl = realGc >= 20 ? '🔥 LEYENDA' : realGc >= 10 ? '⚡ Experto' : realGc >= 5 ? '🌟 Pro' : '⭐ Novato';
+            if (cmLvlEl) cmLvlEl.textContent = realLvl;
+            try { document.getElementById('creatorInfoGames').textContent = realGc; document.getElementById('creatorInfoPlays').textContent = realTp; } catch(e) {}
+          }
+        });
     }
 
     // Sync old IDs
@@ -6835,25 +6878,41 @@ function openCreatorProfile(authorName, knownUserId) {
   // If no local games found but we have a userId, fetch profile from Supabase and open anyway
   if (creatorGames.length === 0 && knownUserId) {
     const isMe2 = currentUser && knownUserId === currentUser.id;
+    if (isMe2) {
+      // Es el propio usuario sin juegos — abrir su perfil directamente
+      openProfile();
+      return;
+    }
     if (!isMe2) {
       // Fetch profile data and render with empty games
       sb.from('profiles')
-        .select('id, username, avatar_url, avatar_emoji, bio, title, created_at, last_seen, country, card_theme, social_links, total_plays, total_likes, games_count')
-        .eq('id', knownUserId).single()
+        .select('id, username, avatar_url, avatar_emoji, bio, title, created_at, last_seen, country, card_theme, social_links')
+        .eq('id', knownUserId).maybeSingle()
         .then(({ data, error }) => {
-          if (!data) return;
+          if (!data) {
+            // Perfil no encontrado — mostrar básico con nombre
+            const emojiEl2 = document.getElementById('creatorAvatarEmoji');
+            const imgEl2   = document.getElementById('creatorAvatarImg');
+            if (emojiEl2) { emojiEl2.textContent = '🎮'; emojiEl2.style.display = 'block'; }
+            if (imgEl2) imgEl2.style.display = 'none';
+            document.getElementById('cmUsername').textContent = authorName || 'Jugador';
+            document.getElementById('cmBio').textContent = 'Creador de juegos en MiP HUB.';
+            const metaEl3 = document.getElementById('cmMetaRow');
+            if (metaEl3) metaEl3.innerHTML = '';
+            return;
+          }
           const dname = data.username || authorName || 'Jugador';
           // Populate modal
           document.getElementById('cmUsername').textContent   = dname;
           document.getElementById('cmTitleLabel').textContent = (data.title || 'Game Creator').toUpperCase();
           document.getElementById('cmBio').textContent        = data.bio || 'Creador de juegos en MiP HUB.';
-          document.getElementById('cmStatGames').textContent  = data.games_count || 0;
-          const tp = data.total_plays || 0;
-          const tl = data.total_likes || 0;
+          document.getElementById('cmStatGames').textContent  = 0;
+          const tp = 0;
+          const tl = 0;
           document.getElementById('cmStatPlays').textContent  = tp >= 1000 ? (tp/1000).toFixed(1)+'k' : tp;
           document.getElementById('cmStatLikes').textContent  = tl >= 1000 ? (tl/1000).toFixed(1)+'k' : tl;
           document.getElementById('cmStatRating').textContent = '—';
-          const gc = data.games_count || 0;
+          const gc = 0;
           const lvl = gc >= 20 ? '🔥 LEYENDA' : gc >= 10 ? '⚡ Experto' : gc >= 5 ? '🌟 Pro' : '⭐ Novato';
           const lvlEl = document.getElementById('cmLevelBadge'); if (lvlEl) lvlEl.textContent = lvl;
           const emojiEl = document.getElementById('creatorAvatarEmoji');
@@ -6999,7 +7058,7 @@ function openCreatorProfile(authorName, knownUserId) {
     if (creatorId) {
       renderFriendButton(creatorId, displayName);
     } else {
-      sb.from('profiles').select('id').ilike('username', displayName).single()
+      sb.from('profiles').select('id').ilike('username', displayName).maybeSingle()
         .then(({ data }) => { if (data?.id) renderFriendButton(data.id, displayName); });
     }
   }
@@ -7014,13 +7073,13 @@ function openCreatorProfile(authorName, knownUserId) {
     sb.from('profiles')
       .select('created_at, last_seen, country, avatar_url, avatar_emoji, bio, title, card_theme, social_links')
       .eq('id', authorId)
-      .single()
+      .maybeSingle()
       .then(({ data, error }) => _cmShowProfileData(data, isMe, displayName));
   } else if (authorName) {
     sb.from('profiles')
       .select('created_at, last_seen, country, avatar_url, avatar_emoji, bio, title, card_theme, social_links')
       .ilike('username', authorName)
-      .single()
+      .maybeSingle()
       .then(({ data, error }) => _cmShowProfileData(data, isMe, displayName));
   } else {
     if (metaEl) metaEl.innerHTML = '';
