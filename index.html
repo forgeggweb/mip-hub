@@ -2621,45 +2621,45 @@ body::before {
 //  DRAG HELPER — para chat windows y burbujas
 // ══════════════════════════════════════════════
 function makeDraggable(el, handleEl) {
-  // Detach from flow: convert to fixed position at current coords
-  function detachToFixed() {
-    if (el.dataset.dragging === 'fixed') return;
+  let startX, startY, origLeft, origTop, dragging = false;
+  let _dragged = false;
+
+  // We store position as data attrs so renderChatBubbles can restore it
+  function getPos() {
+    const rect = el.getBoundingClientRect();
+    return { left: rect.left, top: rect.top };
+  }
+
+  function applyFixed() {
+    if (el.style.position === 'fixed' && el.dataset.floated) return;
     const rect = el.getBoundingClientRect();
     el.style.position = 'fixed';
-    el.style.left = rect.left + 'px';
-    el.style.top  = rect.top  + 'px';
+    el.style.left   = rect.left + 'px';
+    el.style.top    = rect.top  + 'px';
     el.style.right  = 'auto';
     el.style.bottom = 'auto';
     el.style.margin = '0';
-    el.dataset.dragging = 'fixed';
-    // Remove from flex container so it floats freely
-    document.body.appendChild(el);
+    el.dataset.floated = '1';
   }
-
-  let startX, startY, startLeft, startTop, dragged = false;
 
   handleEl.style.cursor = 'grab';
 
-  handleEl.addEventListener('mousedown', onDown);
-  handleEl.addEventListener('touchstart', onDown, { passive: false });
-
   function onDown(e) {
-    // Don't drag if clicking a button inside the header
     if (e.target.tagName === 'BUTTON') return;
-
-    detachToFixed();
-    dragged = false;
+    _dragged = false;
+    applyFixed();
 
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    startX = clientX;
-    startY = clientY;
-    startLeft = parseInt(el.style.left) || 0;
-    startTop  = parseInt(el.style.top)  || 0;
+    startX   = clientX;
+    startY   = clientY;
+    origLeft = parseFloat(el.style.left)  || 0;
+    origTop  = parseFloat(el.style.top)   || 0;
 
     handleEl.style.cursor = 'grabbing';
-    el.style.transition = 'none';
-    el.style.zIndex = 9999;
+    el.style.transition   = 'none';
+    el.style.zIndex       = 9999;
+    dragging = true;
 
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup',   onUp);
@@ -2669,24 +2669,22 @@ function makeDraggable(el, handleEl) {
   }
 
   function onMove(e) {
+    if (!dragging) return;
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     const dx = clientX - startX;
     const dy = clientY - startY;
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragged = true;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) _dragged = true;
 
-    // Clamp to viewport
     const maxX = window.innerWidth  - el.offsetWidth;
     const maxY = window.innerHeight - el.offsetHeight;
-    const newLeft = Math.max(0, Math.min(maxX, startLeft + dx));
-    const newTop  = Math.max(0, Math.min(maxY, startTop  + dy));
-
-    el.style.left = newLeft + 'px';
-    el.style.top  = newTop  + 'px';
+    el.style.left = Math.max(0, Math.min(maxX, origLeft + dx)) + 'px';
+    el.style.top  = Math.max(0, Math.min(maxY, origTop  + dy)) + 'px';
     e.preventDefault();
   }
 
   function onUp() {
+    dragging = false;
     handleEl.style.cursor = 'grab';
     el.style.zIndex = 3000;
     document.removeEventListener('mousemove', onMove);
@@ -2694,6 +2692,12 @@ function makeDraggable(el, handleEl) {
     document.removeEventListener('touchmove', onMove);
     document.removeEventListener('touchend',  onUp);
   }
+
+  // Expose dragged state so click handlers can check it
+  el._wasDragged = () => _dragged;
+
+  handleEl.addEventListener('mousedown', onDown);
+  handleEl.addEventListener('touchstart', onDown, { passive: false });
 }
 </script>
 
