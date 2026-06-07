@@ -56,6 +56,101 @@ body::before {
   z-index: 0;
 }
 
+/* ══ TOAST AMIGO EN LÍNEA ══════════════════════════════════ */
+.toast-friend-online {
+  position: relative;
+  background: linear-gradient(135deg, #0d1f14 0%, #0a1a2e 100%);
+  border: 1px solid rgba(0,230,118,0.45);
+  border-radius: 16px;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,230,118,0.15), 0 0 30px rgba(0,230,118,0.12);
+  opacity: 0;
+  transform: translateX(30px);
+  transition: opacity 0.35s cubic-bezier(.4,0,.2,1), transform 0.35s cubic-bezier(.4,0,.2,1);
+  margin-top: 10px;
+  min-width: 290px;
+  max-width: 340px;
+}
+.tfo-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 20% 50%, rgba(0,230,118,0.10) 0%, transparent 70%);
+  pointer-events: none;
+  animation: tfoGlowPulse 2s ease-in-out infinite;
+}
+@keyframes tfoGlowPulse {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.tfo-body {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 14px 14px 16px;
+  position: relative;
+  z-index: 1;
+}
+.tfo-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.tfo-online-ring {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid var(--green);
+  animation: tfoRingPulse 1.6s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes tfoRingPulse {
+  0%,100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.15); opacity: 0.4; }
+}
+.tfo-dot {
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 11px;
+  height: 11px;
+  background: var(--green);
+  border-radius: 50%;
+  border: 2px solid #0d1f14;
+  box-shadow: 0 0 8px var(--green);
+  animation: tfoRingPulse 1.6s ease-in-out infinite;
+}
+.tfo-text { flex: 1; min-width: 0; }
+.tfo-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tfo-title strong { color: var(--green); }
+.tfo-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+  font-weight: 600;
+}
+.tfo-actions { flex-shrink: 0; }
+.tfo-btn-chat {
+  background: linear-gradient(135deg, var(--green2), var(--green));
+  border: none;
+  border-radius: 8px;
+  color: #000;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-family: 'Nunito', sans-serif;
+  transition: filter 0.15s, transform 0.15s;
+}
+.tfo-btn-chat:hover { filter: brightness(1.12); transform: translateY(-1px); }
+/* ══ FIN TOAST AMIGO EN LÍNEA ══════════════════════════════ */
+
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
@@ -3242,8 +3337,8 @@ async function loadGames() {
 // Guarda UN juego en Supabase (upsert)
 async function saveGame(game) {
   try {
-    // Guardar HTML en Supabase Storage (solo si hay HTML nuevo)
-    if (game.html && !game._skipHtml) {
+    // Guardar HTML en Supabase Storage
+    if (game.html) {
       const blob = new Blob([game.html], { type: 'text/html' });
       const { error: storageErr } = await sb.storage
         .from('game-files')
@@ -3264,17 +3359,14 @@ async function saveGame(game) {
       tags:         game.tags || [],
       visibility:   game.visibility  || 'public',
       version:      game.version || '',
-      has_file:     game.has_file !== undefined ? !!game.has_file : !!game.html,
+      has_file:     !!game.html,
+      html:         game.html || null,
       author_name:  game.author_name  || '',
       author_emoji: game.author_emoji || '🎮',
       author_id:    game.author_id    || null,
       ts:           game.ts || Date.now(),
       edited_at:    game.editedAt || null,
     };
-    // Solo incluir html en el upsert si realmente hay HTML nuevo que guardar
-    if (!game._skipHtml) {
-      row.html = game.html || null;
-    }
     const { error } = await sb.from('games').upsert(row);
     if (error) console.error('Supabase saveGame error:', error);
     else console.log('✅ Guardado en Supabase:', game.name);
@@ -3604,8 +3696,7 @@ function makeCard(g, i = 0, scrollCard = false) {
   card.innerHTML = `
     <div class="card-thumb">
       ${g.thumbnail 
-        ? `<img class="card-thumb-img" src="${g.thumbnail}" alt="${g.name}" onerror="this.style.display='none';var cv=document.getElementById('thumb-fb-${g.id}');if(cv){cv.style.display='block';window._drawThumbFallback&&window._drawThumbFallback('${g.id}','${g.genre}',${JSON.stringify(g.name)});}">`
-          + `<canvas class="card-thumb-canvas" id="thumb-fb-${g.id}" width="280" height="157" style="display:none"></canvas>`
+        ? `<img class="card-thumb-img" src="${g.thumbnail}" alt="${g.name}">`
         : `<canvas class="card-thumb-canvas" id="thumb-${g.id}" width="280" height="157"></canvas>`}
       ${badge}
       <button class="card-like-btn ${g.fav?'faved':''}" onclick="event.stopPropagation();toggleFav('${g.id}')" title="Favorito">${g.fav ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'}</button>
@@ -3640,14 +3731,6 @@ function makeCard(g, i = 0, scrollCard = false) {
 
   return card;
 }
-
-// Fallback global para imágenes rotas en tarjetas
-window._drawThumbFallback = function(gameId, genre, name) {
-  const canvas = document.getElementById('thumb-fb-' + gameId);
-  if (!canvas) return;
-  const fakeGame = { id: gameId, genre: genre, name: name };
-  drawThumb(fakeGame, canvas);
-};
 
 function drawThumb(game, canvas) {
   if (!canvas) return;
@@ -4606,18 +4689,9 @@ async function saveGameEdit() {
     game.html = editPendingHtml;
     game.has_file = true;
     editPendingHtml = null;
-  } else {
-    // Si el juego ya tenía archivo pero el HTML no está en memoria (cargado lazy),
-    // NO sobreescribir has_file con false. Preservarlo desde la copia original.
-    // Forzamos que el upsert no toque el campo html si no cambió.
-    if (game.has_file && !game.html) {
-      // Guardamos sin el campo html para no borrarlo en Supabase
-      game._skipHtml = true;
-    }
   }
 
   await saveGame(game);
-  game._skipHtml = false;
   renderAll();
   renderHeroCarousel();
 
@@ -5936,6 +6010,158 @@ async function removeFriend(targetUserId, targetName) {
   } catch(e) { toast('Error al eliminar amigo', 'error'); }
 }
 
+// ══════════════════════════════════════════════
+//  FRIEND ONLINE NOTIFICATIONS
+// ══════════════════════════════════════════════
+const _friendOnlineStatus = {}; // { [userId]: boolean }
+let _friendOnlineInterval = null;
+
+function _playFriendOnlineSound() {
+  try {
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    const mg = ac.createGain(); mg.gain.value = 0.5; mg.connect(ac.destination);
+    const now = ac.currentTime;
+    // Melodía: sol-do-mi ascendente, suave y amigable
+    [[392, 0], [523, 0.13], [659, 0.26], [784, 0.40]].forEach(([freq, dt]) => {
+      const o = ac.createOscillator(); const g = ac.createGain();
+      o.type = 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0, now + dt);
+      g.gain.linearRampToValueAtTime(0.28, now + dt + 0.04);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + dt + 0.55);
+      o.connect(g); g.connect(mg); o.start(now + dt); o.stop(now + dt + 0.6);
+    });
+    // Armónico suave encima
+    [[784, 0.40], [1047, 0.54]].forEach(([freq, dt]) => {
+      const o = ac.createOscillator(); const g = ac.createGain();
+      o.type = 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0, now + dt);
+      g.gain.linearRampToValueAtTime(0.10, now + dt + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + dt + 0.45);
+      o.connect(g); g.connect(mg); o.start(now + dt); o.stop(now + dt + 0.5);
+    });
+    setTimeout(() => ac.close(), 2000);
+  } catch(e) {}
+}
+
+function showFriendOnlineToast(friendName, friendAvatar, friendEmoji, friendId) {
+  // Remover toasts anteriores del mismo tipo para no acumular
+  document.querySelectorAll('.toast-friend-online').forEach(el => el.remove());
+
+  const container = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = 'toast-friend-online';
+
+  const avatarHtml = friendAvatar
+    ? `<img src="${escHtml(friendAvatar)}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid rgba(0,230,118,0.6);flex-shrink:0;" onerror="this.style.display='none'">`
+    : `<div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--accent));display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;border:2px solid rgba(0,230,118,0.6);">${friendEmoji || '🎮'}</div>`;
+
+  el.innerHTML = `
+    <div class="tfo-glow"></div>
+    <div class="tfo-body">
+      <div class="tfo-avatar-wrap">
+        ${avatarHtml}
+        <div class="tfo-online-ring"></div>
+        <div class="tfo-dot"></div>
+      </div>
+      <div class="tfo-text">
+        <div class="tfo-title">¡<strong>${escHtml(friendName)}</strong> está en línea!</div>
+        <div class="tfo-sub">Tu amigo acaba de conectarse</div>
+      </div>
+      <div class="tfo-actions">
+        <button class="tfo-btn-chat" onclick="this.closest('.toast-friend-online').remove();openCreatorProfile('${escHtml(friendName)}')">Ver</button>
+      </div>
+    </div>
+  `;
+
+  container.appendChild(el);
+  _playFriendOnlineSound();
+
+  // Entrada animada
+  requestAnimationFrame(() => { el.style.opacity = '1'; el.style.transform = 'translateX(0)'; });
+
+  // Auto-cierre a los 6 segundos
+  setTimeout(() => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(20px)';
+    el.style.transition = 'all 0.35s';
+    setTimeout(() => el.remove(), 350);
+  }, 6000);
+}
+
+function addFriendOnlineNotification(friendName, friendAvatar, friendId) {
+  const notifId = 'online_' + friendId + '_' + Math.floor(Date.now() / 120000); // único por 2min
+  if (notifications.find(n => n.id === notifId)) return;
+  notifications.unshift({
+    id: notifId,
+    type: 'friend_online',
+    friendId,
+    senderName: friendName,
+    senderAvatar: friendAvatar,
+    ts: Date.now(),
+    read: false,
+  });
+  saveNotifications();
+  updateNotifBadge();
+  renderNotifList();
+}
+
+async function checkFriendsOnline() {
+  if (!currentUser) return;
+  try {
+    await loadFriendships();
+    const accepted = _friendships.filter(f => f.status === 'accepted');
+    if (accepted.length === 0) return;
+    const friendIds = accepted.map(f => f.sender_id === currentUser.id ? f.receiver_id : f.sender_id);
+
+    const { data: profs } = await sb.from('profiles')
+      .select('id, username, avatar_url, avatar_emoji, last_seen')
+      .in('id', friendIds);
+
+    if (!profs) return;
+    const now = Date.now();
+    const ONLINE_THRESHOLD = 5 * 60 * 1000; // 5 minutos
+
+    for (const p of profs) {
+      const lastSeen = p.last_seen ? new Date(p.last_seen).getTime() : 0;
+      const isOnlineNow = (now - lastSeen) < ONLINE_THRESHOLD;
+      const wasOnlineBefore = _friendOnlineStatus[p.id];
+
+      // Transición offline → online: disparar notificación
+      if (isOnlineNow && wasOnlineBefore === false) {
+        showFriendOnlineToast(p.username || 'Tu amigo', p.avatar_url, p.avatar_emoji, p.id);
+        addFriendOnlineNotification(p.username || 'Tu amigo', p.avatar_url, p.id);
+      }
+
+      // Primera vez que vemos este amigo: registrar estado sin notificar
+      if (wasOnlineBefore === undefined) {
+        _friendOnlineStatus[p.id] = isOnlineNow;
+      } else {
+        _friendOnlineStatus[p.id] = isOnlineNow;
+      }
+    }
+  } catch(e) { console.warn('[FRIEND ONLINE] Error:', e); }
+}
+
+function startFriendOnlinePolling() {
+  if (_friendOnlineInterval) return;
+  // Primera pasada con delay para dejar que todo cargue
+  setTimeout(checkFriendsOnline, 4000);
+  // Luego cada 60 segundos
+  _friendOnlineInterval = setInterval(checkFriendsOnline, 60000);
+}
+
+// Arrancar el polling cuando hay sesión activa
+const _origHandleAuthUser2 = handleAuthUser;
+handleAuthUser = function(user) {
+  _origHandleAuthUser2(user);
+  if (user) {
+    startFriendOnlinePolling();
+  } else {
+    if (_friendOnlineInterval) { clearInterval(_friendOnlineInterval); _friendOnlineInterval = null; }
+    Object.keys(_friendOnlineStatus).forEach(k => delete _friendOnlineStatus[k]);
+  }
+};
+
 // Cargar solicitudes pendientes recibidas y mostrarlas como notificaciones
 async function loadFriendNotifications() {
   if (!currentUser) return;
@@ -6555,6 +6781,25 @@ renderNotifList = function() {
           <div class="notif-item-time">${timeAgo}</div>
         </div>`;
       item.onclick = () => { n.read = true; saveNotifications(); updateNotifBadge(); renderNotifList(); };
+
+    } else if (n.type === 'friend_online') {
+      const avatarHtml = n.senderAvatar
+        ? `<img src="${escHtml(n.senderAvatar)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid rgba(0,230,118,0.5);">`
+        : `<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--accent));display:flex;align-items:center;justify-content:center;font-size:18px;border:2px solid rgba(0,230,118,0.5);">🎮</div>`;
+      item.innerHTML = `
+        <div class="notif-item-icon" style="position:relative;">
+          ${avatarHtml}
+          <div style="position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;background:var(--green);border-radius:50%;border:2px solid var(--panel2);box-shadow:0 0 6px var(--green);"></div>
+        </div>
+        <div class="notif-item-body">
+          <div class="notif-item-text" style="color:var(--green);">🟢 <strong style="color:var(--text)">${escHtml(n.senderName)}</strong> está en línea</div>
+          <div class="notif-item-time">${timeAgo}</div>
+        </div>`;
+      item.onclick = () => {
+        n.read = true; saveNotifications(); updateNotifBadge(); renderNotifList();
+        toggleNotifPanel();
+        openCreatorProfile(n.senderName);
+      };
 
     } else {
       const iconHtml = n.authorAvatar
