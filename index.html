@@ -2152,8 +2152,8 @@ body::before {
   background: var(--panel);
   border: 1px solid var(--border2);
   border-radius: 20px;
-  width: 90%; max-width: 480px;
-  padding: 28px 28px 24px;
+  width: 90%; max-width: 560px;
+  padding: 32px 32px 28px;
   position: relative;
   box-shadow: 0 30px 80px rgba(0,0,0,0.7);
   animation: fadeInUp .28s ease both;
@@ -2169,7 +2169,7 @@ body::before {
 .creator-modal-close:hover { border-color: var(--accent); color: var(--accent); }
 
 .creator-header {
-  display: flex; gap: 20px; align-items: flex-start; margin-bottom: 20px;
+  display: flex; gap: 26px; align-items: flex-start; margin-bottom: 24px;
 }
 .creator-card-wrap {
   flex-shrink: 0;
@@ -2236,40 +2236,40 @@ body::before {
 
 .creator-info { flex: 1; min-width: 0; }
 .creator-name {
-  font-family: 'Fredoka One', cursive; font-size: 22px; color: #fff;
-  margin-bottom: 2px;
+  font-family: 'Fredoka One', cursive; font-size: 26px; color: #fff;
+  margin-bottom: 4px;
 }
 .creator-title-label {
   font-size: 11px; color: var(--accent); font-family: monospace;
-  letter-spacing: .8px; text-transform: uppercase; margin-bottom: 10px;
+  letter-spacing: .8px; text-transform: uppercase; margin-bottom: 14px;
 }
 .creator-bio {
-  font-size: 12px; color: var(--muted); line-height: 1.6; margin-bottom: 12px;
+  font-size: 12px; color: var(--muted); line-height: 1.7; margin-bottom: 16px;
 }
 .creator-stats-row {
-  display: flex; gap: 14px; margin-bottom: 14px;
+  display: flex; gap: 10px; margin-bottom: 16px;
 }
 .creator-stat-box {
   background: var(--panel2); border: 1px solid var(--border);
-  border-radius: 10px; padding: 8px 12px; text-align: center; flex: 1;
+  border-radius: 12px; padding: 10px 14px; text-align: center; flex: 1;
 }
-.creator-stat-val { font-family: 'Fredoka One', cursive; font-size: 18px; color: #fff; }
+.creator-stat-val { font-family: 'Fredoka One', cursive; font-size: 20px; color: #fff; }
 .creator-stat-lbl { font-size: 9px; font-weight: 700; color: var(--muted); text-transform: uppercase; }
 
-.creator-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
+.creator-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
 .creator-tag {
   background: rgba(0,180,255,.1); border: 1px solid rgba(0,180,255,.25);
-  color: var(--accent); border-radius: 999px; padding: 3px 10px;
+  color: var(--accent); border-radius: 999px; padding: 4px 12px;
   font-size: 10px; font-weight: 800;
 }
 .creator-meta-row {
-  display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px;
+  display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;
 }
 .creator-meta-item {
-  display: flex; align-items: center; gap: 5px;
+  display: flex; align-items: center; gap: 6px;
   background: var(--panel2); border: 1px solid var(--border);
-  border-radius: 8px; padding: 5px 10px;
-  font-size: 10px; font-weight: 700; color: var(--muted);
+  border-radius: 10px; padding: 6px 12px;
+  font-size: 11px; font-weight: 700; color: var(--muted);
 }
 .creator-meta-item span { color: var(--text); }
 .creator-online-dot {
@@ -2280,8 +2280,8 @@ body::before {
 
 .creator-games-label {
   font-size: 11px; font-weight: 700; color: var(--muted);
-  text-transform: uppercase; letter-spacing: .8px; margin-bottom: 10px;
-  padding-top: 14px; border-top: 1px solid var(--border);
+  text-transform: uppercase; letter-spacing: .8px; margin-bottom: 12px;
+  padding-top: 18px; border-top: 1px solid var(--border);
 }
 .btn-friend {
   display: inline-flex; align-items: center; gap: 6px;
@@ -5679,9 +5679,9 @@ setTimeout(async () => { await pollNewGames(); setInterval(pollNewGames, 30000);
           </div>
         </div>
         <div class="creator-tags" id="creatorTagsRow"></div>
-        <div id="creatorSocialsRow" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
+        <div id="creatorSocialsRow" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;margin-bottom:4px;"></div>
         <div class="creator-meta-row" id="creatorMetaRow"></div>
-        <div id="friendBtnRow" style="margin-top:10px;"></div>
+        <div id="friendBtnRow" style="margin-top:14px;"></div>
       </div>
     </div>
     <!-- Games by this creator -->
@@ -5694,7 +5694,7 @@ setTimeout(async () => { await pollNewGames(); setInterval(pollNewGames, 30000);
 // ══════════════════════════════════════════════
 //  CREATOR PROFILE MODAL
 // ══════════════════════════════════════════════
-function openCreatorProfile(authorName) {
+function openCreatorProfile(authorName, knownUserId) {
   if (!authorName) return;
 
   const creatorGames = games.filter(g =>
@@ -5707,8 +5707,10 @@ function openCreatorProfile(authorName) {
   const avgRating  = totalVotes > 0 ? Math.round((totalLikes / totalVotes) * 100) + '%' : '—';
 
   // isMe: match by Supabase author_id (reliable) OR by username as fallback
-  const isMe = (currentUser && creatorGames.some(g => g.author_id === currentUser.id))
-    || (profile.username && profile.username.trim().toLowerCase() === authorName.trim().toLowerCase());
+  const isMe = (currentUser && (
+    (knownUserId && knownUserId === currentUser.id) ||
+    creatorGames.some(g => g.author_id === currentUser.id)
+  )) || (profile.username && profile.username.trim().toLowerCase() === authorName.trim().toLowerCase());
 
   // Always show current saved profile name when it's the logged-in user
   const displayName = isMe ? (profile.username || authorName) : authorName;
@@ -5717,7 +5719,8 @@ function openCreatorProfile(authorName) {
   const bio         = isMe ? (profile.bio || '') : '';
   const avatarImg   = isMe ? (profile.avatarImage || null) : null;
 
-  // Apply card theme (own theme if isMe, default blue otherwise)
+  // Apply card theme
+  // For isMe: use saved theme. For others: show default until Supabase responds
   const themeN = isMe ? (profile.cardTheme || 1) : 1;
   const theme  = DP_CARD_THEMES.find(t => t.n === themeN) || DP_CARD_THEMES[0];
   const frontEl = document.getElementById('creatorDpFront');
@@ -5729,16 +5732,22 @@ function openCreatorProfile(authorName) {
   if (ringEl)  { ringEl.style.background  = 'conic-gradient(' + theme.ring + ')'; }
   if (innerEl) { innerEl.style.background = theme.inner; innerEl.style.borderColor = theme.inner; }
 
-  // Avatar
+  // Avatar — for own profile apply immediately; for others show spinner until Supabase responds
   const emojiEl = document.getElementById('creatorAvatarEmoji');
   const imgEl   = document.getElementById('creatorAvatarImg');
-  if (emojiEl) emojiEl.textContent = emoji;
-  if (avatarImg) {
-    imgEl.src = avatarImg; imgEl.style.display = 'block';
-    if (emojiEl) emojiEl.style.display = 'none';
+  if (isMe) {
+    if (emojiEl) emojiEl.textContent = emoji;
+    if (avatarImg) {
+      imgEl.src = avatarImg; imgEl.style.display = 'block';
+      if (emojiEl) emojiEl.style.display = 'none';
+    } else {
+      imgEl.style.display = 'none';
+      if (emojiEl) emojiEl.style.display = 'block';
+    }
   } else {
-    imgEl.style.display = 'none';
-    if (emojiEl) emojiEl.style.display = 'block';
+    // Show emoji placeholder while loading — will be replaced by real avatar in showProfileData
+    if (emojiEl) { emojiEl.textContent = emoji; emojiEl.style.display = 'block'; }
+    if (imgEl) imgEl.style.display = 'none';
   }
 
   // Card face text
@@ -5822,104 +5831,110 @@ function openCreatorProfile(authorName) {
   const metaRow = document.getElementById('creatorMetaRow');
   if (metaRow) {
     metaRow.innerHTML = '<div class="creator-meta-item">⏳ <span>Cargando info...</span></div>';
+  }
 
-    const authorId = isMe ? currentUser?.id : (creatorGames[0]?.author_id || null);
+  const authorId = isMe ? currentUser?.id : (knownUserId || creatorGames[0]?.author_id || null);
 
-    // Función para mostrar los datos del perfil
-    function showProfileData(data) {
-      if (!data) {
-        let fallbackHtml = '<div class="creator-meta-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;flex-shrink:0"><rect x="2" y="6" width="20" height="12" rx="4" stroke="currentColor" stroke-width="2"/><path d="M6 12h4M8 10v4M15 11h.01M18 13h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> <span>' + totalPlays + ' jugadas totales</span></div>';
-        metaRow.innerHTML = fallbackHtml;
-        // Para isMe, los socials ya fueron renderizados de inmediato arriba
-        return;
+  // DEBUG: mostrar qué authorId se va a usar
+  console.log('[PERFIL] openCreatorProfile:', authorName, '| authorId:', authorId, '| knownUserId:', knownUserId, '| isMe:', isMe);
+
+  // Función para mostrar los datos del perfil
+  function showProfileData(data) {
+    console.log('[PERFIL] showProfileData recibió:', data);
+    if (!data) {
+      if (metaRow) {
+        metaRow.innerHTML = '<div class="creator-meta-item" style="color:#f88">⚠ Sin datos en Supabase (authorId=' + authorId + ')</div>';
+      }
+      return;
+    }
+
+    // Avatar real
+    if (!isMe) {
+      const emojiElNow = document.getElementById('creatorAvatarEmoji');
+      const imgElNow   = document.getElementById('creatorAvatarImg');
+      if (data.avatar_url && imgElNow) {
+        imgElNow.src   = data.avatar_url;
+        imgElNow.style.display = 'block';
+        if (emojiElNow) emojiElNow.style.display = 'none';
+        imgElNow.onerror = () => { imgElNow.style.display = 'none'; if (emojiElNow) emojiElNow.style.display = 'block'; };
+      } else if (data.avatar_emoji && emojiElNow) {
+        emojiElNow.textContent = data.avatar_emoji;
+        emojiElNow.style.display = 'block';
+        if (imgElNow) imgElNow.style.display = 'none';
       }
 
-      // Cargar imagen del creador si tiene — actualizar AMBOS: mini card + header grande
-      if (!isMe) {
-        // Actualizar emoji si viene del perfil
-        if (data.avatar_emoji) {
-          const emojiElNow = document.getElementById('creatorAvatarEmoji');
-          if (emojiElNow) emojiElNow.textContent = data.avatar_emoji;
-        }
-        if (data.avatar_url) {
-          // Mini card
-          const imgElNow = document.getElementById('creatorAvatarImg');
-          const emojiElNow = document.getElementById('creatorAvatarEmoji');
-          if (imgElNow) {
-            imgElNow.src = data.avatar_url;
-            imgElNow.style.display = 'block';
-            imgElNow.onerror = () => { imgElNow.style.display = 'none'; if (emojiElNow) emojiElNow.style.display = 'block'; };
-            if (emojiElNow) emojiElNow.style.display = 'none';
-          }
-          // También buscar si hay otro img del creatorAvatarImg en el clone
-          document.querySelectorAll('[id^="creatorAvatarImg"]').forEach(el => {
-            el.src = data.avatar_url;
-            el.style.display = 'block';
-          });
-        }
+      // Bio y título
+      const bioEl   = document.getElementById('creatorBio');
+      const titleEl = document.getElementById('creatorTitleLabel');
+      if (bioEl   && data.bio)   bioEl.textContent   = data.bio;
+      if (titleEl && data.title) titleEl.textContent = data.title;
+
+      // Tema de tarjeta
+      if (data.card_theme) {
+        const creatorTheme = DP_CARD_THEMES.find(t => t.n === data.card_theme) || DP_CARD_THEMES[0];
+        const frontElNow = document.getElementById('creatorDpFront');
+        const backElNow  = document.getElementById('creatorDpBack');
+        const ringElNow  = document.getElementById('creatorAvatarRing');
+        const innerElNow = document.getElementById('creatorAvatarInner');
+        if (frontElNow) { frontElNow.style.background = creatorTheme.bg; frontElNow.style.borderColor = creatorTheme.border; }
+        if (backElNow)  { backElNow.style.background  = creatorTheme.bg; }
+        if (ringElNow)  { ringElNow.style.background  = 'conic-gradient(' + creatorTheme.ring + ')'; }
+        if (innerElNow) { innerElNow.style.background = creatorTheme.inner; innerElNow.style.borderColor = creatorTheme.inner; }
       }
+    }
 
-      // Bio y país
-      if (!isMe) {
-        const bioEl = document.getElementById('creatorBio');
-        if (bioEl && data.bio) bioEl.textContent = data.bio;
-        const titleEl = document.getElementById('creatorTitleLabel');
-        if (titleEl && data.title) titleEl.textContent = data.title;
+    // Meta row
+    const now = new Date();
+    const lastSeen  = data.last_seen   ? new Date(data.last_seen)   : null;
+    const createdAt = data.created_at  ? new Date(data.created_at)  : null;
+    const isOnline  = lastSeen && (now - lastSeen) < 5 * 60 * 1000;
+    const minutesAgo = lastSeen ? Math.floor((now - lastSeen) / 60000)    : null;
+    const hoursAgo   = lastSeen ? Math.floor((now - lastSeen) / 3600000)  : null;
+    const daysAgo    = lastSeen ? Math.floor((now - lastSeen) / 86400000) : null;
+    let lastSeenText = 'Nunca';
+    if (lastSeen) {
+      if (isOnline)          lastSeenText = 'Ahora mismo';
+      else if (minutesAgo < 60) lastSeenText = 'Hace ' + minutesAgo + ' min';
+      else if (hoursAgo < 24)   lastSeenText = 'Hace ' + hoursAgo + 'h';
+      else if (daysAgo < 30)    lastSeenText = 'Hace ' + daysAgo + ' días';
+      else lastSeenText = lastSeen.toLocaleDateString('es-AR', {day:'numeric', month:'short', year:'numeric'});
+    }
+    let joinedText = '—';
+    if (createdAt) joinedText = createdAt.toLocaleDateString('es-AR', {day:'numeric', month:'short', year:'numeric'});
 
-        // Aplicar el tema de la tarjeta del creador
-        if (data.card_theme) {
-          const creatorTheme = DP_CARD_THEMES.find(t => t.n === data.card_theme) || DP_CARD_THEMES[0];
-          const frontElNow = document.getElementById('creatorDpFront');
-          const backElNow  = document.getElementById('creatorDpBack');
-          const ringElNow  = document.getElementById('creatorAvatarRing');
-          const innerElNow = document.getElementById('creatorAvatarInner');
-          if (frontElNow) { frontElNow.style.background = creatorTheme.bg; frontElNow.style.borderColor = creatorTheme.border; }
-          if (backElNow)  { backElNow.style.background  = creatorTheme.bg; }
-          if (ringElNow)  { ringElNow.style.background  = 'conic-gradient(' + creatorTheme.ring + ')'; }
-          if (innerElNow) { innerElNow.style.background = creatorTheme.inner; innerElNow.style.borderColor = creatorTheme.inner; }
-        }
-      }
-
-      const now = new Date();
-      const lastSeen = data.last_seen ? new Date(data.last_seen) : null;
-      const createdAt = data.created_at ? new Date(data.created_at) : null;
-      const isOnline = lastSeen && (now - lastSeen) < 5 * 60 * 1000;
-      const minutesAgo = lastSeen ? Math.floor((now - lastSeen) / 60000) : null;
-      const hoursAgo = lastSeen ? Math.floor((now - lastSeen) / 3600000) : null;
-      const daysAgo = lastSeen ? Math.floor((now - lastSeen) / 86400000) : null;
-
-      let lastSeenText = 'Nunca';
-      if (lastSeen) {
-        if (isOnline) lastSeenText = 'Ahora mismo';
-        else if (minutesAgo < 60) lastSeenText = 'Hace ' + minutesAgo + ' min';
-        else if (hoursAgo < 24) lastSeenText = 'Hace ' + hoursAgo + 'h';
-        else if (daysAgo < 30) lastSeenText = 'Hace ' + daysAgo + ' días';
-        else lastSeenText = lastSeen.toLocaleDateString('es-AR', {day:'numeric', month:'short', year:'numeric'});
-      }
-
-      let joinedText = '—';
-      if (createdAt) joinedText = createdAt.toLocaleDateString('es-AR', {day:'numeric', month:'short', year:'numeric'});
-
+    if (metaRow) {
       let html = '';
       html += '<div class="creator-meta-item"><div class="creator-online-dot ' + (isOnline ? 'online' : 'offline') + '"></div><span>' + (isOnline ? 'En línea' : lastSeenText) + '</span></div>';
       html += '<div class="creator-meta-item">📅 Desde <span>' + joinedText + '</span></div>';
       if (data.country) html += '<div class="creator-meta-item">🌍 <span>' + data.country + '</span></div>';
-      html += '<div class="creator-meta-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;flex-shrink:0"><rect x="2" y="6" width="20" height="12" rx="4" stroke="currentColor" stroke-width="2"/><path d="M6 12h4M8 10v4M15 11h.01M18 13h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> <span>' + totalPlays + ' jugadas totales</span></div>';
+      html += '<div class="creator-meta-item">🎮 <span>' + totalPlays + ' jugadas totales</span></div>';
       metaRow.innerHTML = html;
-      // Social links: usar el div dedicado en lugar de inyectar en metaRow
-      const socials = isMe ? (profile.socialLinks || {}) : (data.social_links || {});
-      renderSocialsRow(socials);
     }
 
-    if (authorId) {
-      // Buscar por ID
-      sb.from('profiles').select('created_at, last_seen, country, avatar_url, avatar_emoji, bio, title, card_theme, social_links').eq('id', authorId).single()
-        .then(({ data, error }) => showProfileData(error ? null : data));
-    } else {
-      // Buscar por username como fallback
-      sb.from('profiles').select('created_at, last_seen, country, avatar_url, avatar_emoji, bio, title, card_theme, social_links').ilike('username', authorName.trim()).single()
-        .then(({ data, error }) => showProfileData(error ? null : data));
-    }
+    // Socials
+    const socials = isMe ? (profile.socialLinks || {}) : (data.social_links || {});
+    renderSocialsRow(socials);
+  }
+
+  // Ejecutar query Supabase directamente (sin setTimeout, sin cloneNode)
+  if (authorId) {
+    sb.from('profiles')
+      .select('created_at, last_seen, country, avatar_url, avatar_emoji, bio, title, card_theme, social_links')
+      .eq('id', authorId)
+      .single()
+      .then(({ data, error }) => {
+        console.log('[PERFIL] Query por ID resultado:', { data, error });
+        showProfileData(error ? null : data);
+      });
+  } else {
+    sb.from('profiles')
+      .select('created_at, last_seen, country, avatar_url, avatar_emoji, bio, title, card_theme, social_links')
+      .ilike('username', authorName.trim())
+      .single()
+      .then(({ data, error }) => {
+        console.log('[PERFIL] Query por username resultado:', { data, error });
+        showProfileData(error ? null : data);
+      });
   }
 
   const scroll = document.getElementById('creatorGamesScroll');
@@ -5969,41 +5984,43 @@ function openCreatorProfile(authorName) {
 
   document.getElementById('creatorModal').classList.add('open');
 
-  // Init tilt — same as dpInitTilt, runs after modal is visible
+  // Init tilt — NO usamos cloneNode porque duplica IDs y rompe getElementById.
+  // En cambio removemos listeners anteriores con AbortController.
   setTimeout(function() {
     const scene = document.getElementById('creatorCardScene');
     if (!scene) return;
-    // Clone to remove previous listeners
-    const newScene = scene.cloneNode(true);
-    scene.parentNode.replaceChild(newScene, scene);
-    // Get card reference from the NEW cloned scene
-    const card = newScene.querySelector('#creatorDpCard');
+
+    // Redraw QR
+    const qrCanvas = document.getElementById('creatorQrCanvas');
+    if (qrCanvas && window._drawCreatorQR) window._drawCreatorQR(qrCanvas);
+
+    // Remove old listeners via AbortController
+    if (window._creatorTiltAbort) window._creatorTiltAbort.abort();
+    window._creatorTiltAbort = new AbortController();
+    const sig = window._creatorTiltAbort.signal;
+    const card = document.getElementById('creatorDpCard');
     if (!card) return;
 
-    // Redraw QR on the cloned canvas (cloneNode copies DOM but NOT canvas pixels)
-    const newQr = newScene.querySelector('#creatorQrCanvas');
-    if (newQr && window._drawCreatorQR) window._drawCreatorQR(newQr);
-
-    newScene.addEventListener('mousemove', function(e) {
+    scene.addEventListener('mousemove', function(e) {
       if (card.classList.contains('flipped')) return;
-      const r = newScene.getBoundingClientRect();
+      const r = scene.getBoundingClientRect();
       const x = (e.clientX - r.left) / r.width  - 0.5;
       const y = (e.clientY - r.top)  / r.height - 0.5;
       card.style.transform = 'rotateY(' + (x*22) + 'deg) rotateX(' + (-y*16) + 'deg) scale(1.04)';
-    });
-    newScene.addEventListener('mouseleave', function() {
+    }, { signal: sig });
+    scene.addEventListener('mouseleave', function() {
       if (!card.classList.contains('flipped')) card.style.transform = '';
-    });
-    newScene.addEventListener('click', function() {
+    }, { signal: sig });
+    scene.addEventListener('click', function() {
       card.classList.toggle('flipped');
-    });
+    }, { signal: sig });
   }, 60);
 }
 
 function closeCreatorModal() {
   document.getElementById('creatorModal').classList.remove('open');
-  const scene = document.getElementById('creatorCardScene');
-  const card = scene ? scene.querySelector('#creatorDpCard') : document.getElementById('creatorDpCard');
+  if (window._creatorTiltAbort) { window._creatorTiltAbort.abort(); window._creatorTiltAbort = null; }
+  const card = document.getElementById('creatorDpCard');
   if (card) { card.classList.remove('flipped'); card.style.transform = ''; }
 }
 
@@ -6181,7 +6198,7 @@ function showFriendOnlineToast(friendName, friendAvatar, friendEmoji, friendId) 
         <div class="tfo-sub">Tu amigo acaba de conectarse</div>
       </div>
       <div class="tfo-actions">
-        <button class="tfo-btn-chat" onclick="this.closest('.toast-friend-online').remove();openCreatorProfile('${escHtml(friendName)}')">Ver</button>
+        <button class="tfo-btn-chat" onclick="this.closest('.toast-friend-online').remove();openCreatorProfile('${escHtml(friendName)}','${escHtml(friendId||'')}')">Ver</button>
       </div>
     </div>
   `;
@@ -6323,7 +6340,7 @@ async function renderFriendsList() {
     const avatarHtml = p.avatar_url
       ? `<img src="${escHtml(p.avatar_url)}" alt="">`
       : `<span>${p.avatar_emoji || '🎮'}</span>`;
-    html += `<div class="friend-chip" onclick="closeProfile();openCreatorProfile('${escHtml(p.username || '')}')">
+    html += `<div class="friend-chip" onclick="closeProfile();openCreatorProfile('${escHtml(p.username || '')}','${escHtml(p.id||'')}')">
       <div class="friend-chip-avatar">${avatarHtml}</div>
       <span>${escHtml(p.username || 'Usuario')}</span>
       <button onclick="event.stopPropagation();closeProfile();openChat('${p.id}','${escHtml(p.username||'Usuario')}','${escHtml(p.avatar_url||'')}','${escHtml(p.avatar_emoji||'🎮')}')" style="margin-left:4px;background:var(--accent);border:none;border-radius:5px;color:#000;font-size:10px;font-weight:700;padding:2px 7px;cursor:pointer;">💬</button>
@@ -6443,7 +6460,7 @@ async function renderFriendsView() {
     const safeEmoji = escHtml(p.avatar_emoji||'🎮');
     const safeId = escHtml(p.id);
 
-    friendsHtml += `<div class="friend-card" onclick="openCreatorProfile('${safeUsername}')">
+    friendsHtml += `<div class="friend-card" onclick="openCreatorProfile('${safeUsername}','${safeId}')">
       <div class="friend-card-avatar" style="position:relative;">
         ${avatarHtml}
         <div class="friend-card-online ${isOnline?'online':'offline'}" style="position:absolute;bottom:2px;right:2px;width:12px;height:12px;border-radius:50%;border:2px solid var(--panel);background:${isOnline?'var(--green)':'var(--muted)'};"></div>
@@ -6911,7 +6928,7 @@ renderNotifList = function() {
       item.onclick = () => {
         n.read = true; saveNotifications(); updateNotifBadge(); renderNotifList();
         toggleNotifPanel();
-        openCreatorProfile(n.senderName);
+        openCreatorProfile(n.senderName, n.friendId || n.senderId || null);
       };
 
     } else {
