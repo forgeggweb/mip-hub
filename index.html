@@ -5073,7 +5073,15 @@ let notifPanelOpen = false;
 function loadNotifications() {
   try {
     const d = localStorage.getItem(NOTIF_KEY);
-    notifications = d ? JSON.parse(d) : [];
+    const raw = d ? JSON.parse(d) : [];
+    // Deduplicate by gameId (keep first/newest occurrence)
+    const seen = new Set();
+    notifications = raw.filter(n => {
+      if (!n.gameId) return true; // keep non-game notifs (friend requests etc)
+      if (seen.has(n.gameId)) return false;
+      seen.add(n.gameId);
+      return true;
+    });
   } catch { notifications = []; }
 }
 
@@ -5091,6 +5099,7 @@ function addNotification(game) {
     gameName: game.name,
     authorName: game.author_name || 'Alguien',
     authorEmoji: game.author_emoji || '🎮',
+    authorAvatar: game._authorAvatar || null,
     thumbnail: game.thumbnail || null,
     genre: game.genre || '',
     ts: Date.now(),
@@ -5130,9 +5139,12 @@ function renderNotifList() {
     };
 
     const timeAgo = getTimeAgo(n.ts);
-    const iconHtml = n.thumbnail
-      ? `<img src="${n.thumbnail}" alt="">`
-      : `<span style="font-size:20px">${genreEmoji[n.genre] || '🎮'}</span>`;
+    // Mostrar avatar del autor; si no, thumbnail del juego; si no, emoji de género
+    const iconHtml = n.authorAvatar
+      ? `<img src="${n.authorAvatar}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">`
+      : n.thumbnail
+        ? `<img src="${n.thumbnail}" alt="">`
+        : `<span style="font-size:20px">${genreEmoji[n.genre] || '🎮'}</span>`;
 
     item.innerHTML = `
       <div class="notif-item-icon">${iconHtml}</div>
@@ -5187,16 +5199,42 @@ document.addEventListener('click', (e) => {
 });
 
 // Subscribe to Supabase realtime — only INSERT on games table
+let _notifRealtimeInited = false;
 function initNotifRealtime() {
+  if (_notifRealtimeInited) return;
+  _notifRealtimeInited = true;
   try {
-    sb.channel('public:games')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'games' }, (payload) => {
+    sb.channel('public:games:notif')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'games' }, async (payload) => {
         const game = payload.new;
         if (!game) return;
         // Don't notify about own games
         if (currentUser && game.author_id === currentUser.id) return;
-        addNotification(game);
-        toast(`🆕 ${game.author_name || 'Alguien'} publicó "${game.name}"`, 'success');
+        // Avoid duplicate for same game id
+        if (notifications.find(n => n.gameId === game.id)) return;
+
+        // Fetch author profile to get real name and avatar
+        let authorName = game.author_name || '';
+        let authorAvatar = null;
+        let authorEmoji = game.author_emoji || '🎮';
+        if (game.author_id) {
+          try {
+            const { data } = await sb.from('profiles')
+              .select('username, avatar_url, avatar_emoji')
+              .eq('id', game.author_id)
+              .single();
+            if (data) {
+              authorName = data.username || authorName || 'Alguien';
+              authorAvatar = data.avatar_url || null;
+              authorEmoji = data.avatar_emoji || authorEmoji;
+            }
+          } catch(e) {}
+        }
+        if (!authorName) authorName = 'Alguien';
+
+        const enrichedGame = { ...game, author_name: authorName, author_emoji: authorEmoji, _authorAvatar: authorAvatar };
+        addNotification(enrichedGame);
+        toast(`🆕 <strong>${authorName}</strong> publicó "${game.name}"`, 'success');
       })
       .subscribe();
   } catch(e) { console.warn('Notif realtime error:', e); }
@@ -6023,26 +6061,7 @@ async function showMessageNotif(friendId, senderId, text) {
     } catch(e) {}
   }
 
-  // Add to notifications list
-  const notifId = 'msg_' + friendId + '_' + Date.now();
-  const avatarHtml = senderAvatar
-    ? `<img src="${escHtml(senderAvatar)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">`
-    : `<span style="font-size:20px">${senderEmoji}</span>`;
-
-  notifications.unshift({
-    id: notifId,
-    type: 'chat_message',
-    friendId,
-    senderName,
-    senderAvatar,
-    senderEmoji,
-    text: text.length > 40 ? text.slice(0,37)+'...' : text,
-    ts: Date.now(),
-    read: false,
-  });
-  saveNotifications();
-  updateNotifBadge();
-  renderNotifList();
+  // Solo mostrar toast, sin agregar al panel de notificaciones
   toast(`💬 <strong>${senderName}</strong>: ${text.length > 30 ? text.slice(0,27)+'...' : text}`, 'info');
 }
 
@@ -6282,7 +6301,7 @@ renderNotifList = function() {
   list.innerHTML = '';
   notifications.forEach(n => {
     const item = document.createElement('div');
-    item.className = 'notif-item' + (n.read ? '' : ' unread') + (n.type==='chat_message' && !n.read ? ' notif-unread-msg' : '');
+    item.className = 'notif-item' + (n.read ? '' : ' unread');
 
     const timeAgo = getTimeAgo(n.ts);
 
@@ -6312,22 +6331,6 @@ renderNotifList = function() {
           <div class="notif-item-time">${timeAgo}</div>
         </div>`;
       item.onclick = () => { n.read = true; saveNotifications(); updateNotifBadge(); renderNotifList(); };
-
-    } else if (n.type === 'chat_message') {
-      const avatarHtml = n.senderAvatar
-        ? `<img src="${escHtml(n.senderAvatar)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">`
-        : `<span style="font-family:'Fredoka One',cursive;font-size:12px;color:#fff;letter-spacing:1px;">MiP</span>`;
-      item.innerHTML = `
-        <div class="notif-item-icon">${avatarHtml}</div>
-        <div class="notif-item-body">
-          <div class="notif-item-text">💬 <strong>${escHtml(n.senderName)}</strong>: ${escHtml(n.text)}</div>
-          <div class="notif-item-time">${timeAgo}</div>
-        </div>`;
-      item.onclick = () => {
-        n.read = true; saveNotifications(); updateNotifBadge(); renderNotifList();
-        closeNotifPanel();
-        openChat(n.friendId, n.senderName, n.senderAvatar, n.senderEmoji||'🎮');
-      };
 
     } else {
       const iconHtml = n.thumbnail
