@@ -6296,17 +6296,7 @@ function startFriendOnlinePolling() {
   _friendOnlineInterval = setInterval(checkFriendsOnline, 60000);
 }
 
-// Arrancar el polling cuando hay sesión activa
-const _origHandleAuthUser2 = handleAuthUser;
-handleAuthUser = function(user) {
-  _origHandleAuthUser2(user);
-  if (user) {
-    startFriendOnlinePolling();
-  } else {
-    if (_friendOnlineInterval) { clearInterval(_friendOnlineInterval); _friendOnlineInterval = null; }
-    Object.keys(_friendOnlineStatus).forEach(k => delete _friendOnlineStatus[k]);
-  }
-};
+// startFriendOnlinePolling se llamará desde handleAuthUser unificado al final del archivo
 
 // Cargar solicitudes pendientes recibidas y mostrarlas como notificaciones
 async function loadFriendNotifications() {
@@ -6805,7 +6795,7 @@ async function sendChatMessage(friendId) {
 function initFriendAndChatRealtime() {
   if (!currentUser) return;
 
-  // Listen for NEW incoming friend requests (INSERT where receiver_id = me)
+  // 1) Escuchar NUEVAS solicitudes de amistad recibidas (INSERT donde receiver_id = yo)
   try {
     sb.channel('friend_requests_in_' + currentUser.id)
       .on('postgres_changes', {
@@ -6817,7 +6807,7 @@ function initFriendAndChatRealtime() {
         const f = payload.new;
         if (!f || f.status !== 'pending') return;
         const notifId = 'friend_' + f.sender_id;
-        if (notifications.find(n => n.id === notifId)) return; // evitar duplicado
+        if (notifications.find(n => n.id === notifId)) return;
         let senderName = 'Alguien';
         let senderAvatar = null;
         try {
@@ -6841,7 +6831,7 @@ function initFriendAndChatRealtime() {
       .subscribe();
   } catch(e) {}
 
-  // Listen for friendship updates (accepted)
+  // 2) Escuchar aceptaciones de solicitudes enviadas por mí (UPDATE donde sender_id = yo)
   try {
     sb.channel('friendships_' + currentUser.id)
       .on('postgres_changes', {
@@ -6898,26 +6888,37 @@ function initFriendAndChatRealtime() {
   }, 2000);
 }
 
-// Hook into handleAuthUser to init realtime
+// ══════════════════════════════════════════════
+//  handleAuthUser UNIFICADO (reemplaza los 3 hooks anteriores)
+// ══════════════════════════════════════════════
 const _origHandleAuthUser = handleAuthUser;
 handleAuthUser = function(user) {
   _origHandleAuthUser(user);
+
   if (user) {
-    // Re-init notif realtime now that we have an authenticated user
+    // 1) Re-init canal notif juegos
     _notifRealtimeInited = false;
     if (_notifChannel) {
       try { sb.removeChannel(_notifChannel); } catch(e) {}
       _notifChannel = null;
     }
     setTimeout(initNotifRealtime, 1500);
+
+    // 2) Init realtime de amigos + chat
     setTimeout(initFriendAndChatRealtime, 2500);
+
+    // 3) Polling "amigo en línea"
+    startFriendOnlinePolling();
+
   } else {
-    // Logged out — reset so it re-inits on next login
+    // Logout — limpiar todo
     _notifRealtimeInited = false;
     if (_notifChannel) {
       try { sb.removeChannel(_notifChannel); } catch(e) {}
       _notifChannel = null;
     }
+    if (_friendOnlineInterval) { clearInterval(_friendOnlineInterval); _friendOnlineInterval = null; }
+    Object.keys(_friendOnlineStatus).forEach(k => delete _friendOnlineStatus[k]);
   }
 };
 
