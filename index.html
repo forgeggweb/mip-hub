@@ -6261,8 +6261,9 @@ function dpFlipCard() {
 }
 
 function dpRefreshId() {
-  const name = (document.getElementById('profileUsernameInput')||{}).value || profile.username || '';
-  const uid = 'MIP-' + btoa(name).replace(/[^A-Z0-9]/g,'').slice(0,8).padEnd(8,'0');
+  // Usar el UUID real del usuario (mismo que el ID de billetera)
+  const rawId = (currentUser && currentUser.id) ? currentUser.id.toUpperCase() : '';
+  const uid = rawId ? 'MIP-' + rawId : 'MIP-00000000';
   const el = document.getElementById('dp-card-id');
   if (el) el.textContent = uid;
   return uid;
