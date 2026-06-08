@@ -2937,6 +2937,458 @@ body::before {
 
 /* ══ END CINEMATIC RANKING HEADER ════════════════════════════════════ */
 
+/* ══════════════════════════════════════════
+   MP TOKEN — Moneda de MiP HUB
+══════════════════════════════════════════ */
+.mp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #1a0d2e 0%, #2d1060 50%, #1a0d2e 100%);
+  border: 1.5px solid transparent;
+  border-radius: 20px;
+  padding: 5px 12px 5px 5px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s, box-shadow 0.2s;
+  background-clip: padding-box;
+  box-shadow:
+    0 0 0 1.5px rgba(255,80,200,0.5),
+    0 0 16px rgba(140,50,255,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+}
+.mp-badge::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.06) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: mpShimmer 2.5s linear infinite;
+  pointer-events: none;
+  border-radius: 20px;
+}
+@keyframes mpShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.mp-badge:hover {
+  transform: translateY(-1px) scale(1.04);
+  box-shadow:
+    0 0 0 1.5px rgba(255,80,200,0.8),
+    0 0 24px rgba(180,50,255,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.12);
+}
+.mp-badge:active { transform: scale(0.97); }
+.mp-coin {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: conic-gradient(
+    #ff4db8 0deg,
+    #a855f7 60deg,
+    #00b4ff 120deg,
+    #00e676 180deg,
+    #ffca28 240deg,
+    #ff4db8 300deg,
+    #ff4db8 360deg
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Fredoka One', cursive;
+  font-size: 9px;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+  letter-spacing: 0;
+  flex-shrink: 0;
+  animation: mpCoinSpin 6s linear infinite;
+  box-shadow: 0 0 8px rgba(255,80,180,0.6), inset 0 1px 0 rgba(255,255,255,0.3);
+  font-weight: 900;
+}
+@keyframes mpCoinSpin {
+  0%, 90%, 100% { filter: hue-rotate(0deg) brightness(1); }
+  45% { filter: hue-rotate(180deg) brightness(1.2); }
+}
+.mp-amount {
+  font-family: 'Fredoka One', cursive;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  background: linear-gradient(90deg, #ff4db8, #a855f7, #00b4ff, #00e676, #ffca28, #ff4db8);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: mpTextShimmer 3s linear infinite;
+  font-weight: 900;
+}
+@keyframes mpTextShimmer {
+  0% { background-position: 0% 0; }
+  100% { background-position: 300% 0; }
+}
+.mp-label {
+  font-size: 9px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.4);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-top: -1px;
+}
+
+/* ══ MP WALLET PANEL ══ */
+.mp-panel-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.mp-panel-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+.mp-panel {
+  background: linear-gradient(145deg, #100820 0%, #1c0d38 40%, #0d1a30 100%);
+  border: 1.5px solid rgba(168,85,247,0.4);
+  border-radius: 24px;
+  padding: 32px 28px 28px;
+  width: min(420px, calc(100vw - 32px));
+  position: relative;
+  box-shadow:
+    0 0 0 1px rgba(255,80,200,0.15),
+    0 0 60px rgba(140,50,255,0.25),
+    0 30px 80px rgba(0,0,0,0.7);
+  transform: translateY(30px) scale(0.96);
+  transition: transform 0.3s cubic-bezier(.34,1.56,.64,1);
+}
+.mp-panel-overlay.open .mp-panel {
+  transform: translateY(0) scale(1);
+}
+.mp-panel-close {
+  position: absolute;
+  top: 14px; right: 16px;
+  width: 28px; height: 28px;
+  border: none;
+  background: rgba(255,255,255,0.06);
+  border-radius: 50%;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.mp-panel-close:hover { background: rgba(255,255,255,0.12); color: #fff; }
+.mp-panel-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+.mp-panel-coin-big {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: conic-gradient(
+    #ff4db8 0deg, #a855f7 60deg, #00b4ff 120deg,
+    #00e676 180deg, #ffca28 240deg, #ff4db8 300deg, #ff4db8 360deg
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Fredoka One', cursive;
+  font-size: 28px;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+  margin: 0 auto 12px;
+  box-shadow:
+    0 0 0 4px rgba(168,85,247,0.25),
+    0 0 30px rgba(255,80,200,0.4),
+    inset 0 2px 4px rgba(255,255,255,0.25);
+  animation: mpCoinSpin 8s linear infinite;
+}
+.mp-panel-title {
+  font-family: 'Fredoka One', cursive;
+  font-size: 26px;
+  background: linear-gradient(90deg, #ff4db8, #a855f7, #00b4ff, #00e676, #ffca28, #ff4db8);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: mpTextShimmer 3s linear infinite;
+  margin-bottom: 4px;
+}
+.mp-panel-subtitle {
+  font-size: 12px;
+  color: rgba(255,255,255,0.35);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+.mp-balance-box {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(168,85,247,0.2);
+  border-radius: 16px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+.mp-balance-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.3);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+}
+.mp-balance-amount {
+  font-family: 'Fredoka One', cursive;
+  font-size: 48px;
+  line-height: 1;
+  background: linear-gradient(90deg, #ff4db8, #a855f7, #00b4ff, #00e676, #ffca28, #ff4db8);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: mpTextShimmer 3s linear infinite;
+}
+.mp-balance-unit {
+  font-size: 13px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.35);
+  margin-top: 2px;
+}
+.mp-history-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.3);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 10px;
+}
+.mp-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 160px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.mp-history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 12px;
+}
+.mp-history-desc {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: var(--text);
+}
+.mp-history-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.mp-history-time {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 600;
+  margin-top: 1px;
+}
+.mp-history-amount {
+  font-family: 'Fredoka One', cursive;
+  font-size: 15px;
+}
+.mp-history-amount.plus {
+  background: linear-gradient(90deg, #00e676, #00b4ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.mp-history-amount.minus {
+  color: var(--red);
+}
+.mp-no-history {
+  text-align: center;
+  padding: 20px 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ══ RANKING WEEKLY TIMER ══ */
+.ranking-weekly-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin: 0 0 18px;
+  flex-wrap: wrap;
+}
+.ranking-timer-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,202,40,0.08);
+  border: 1px solid rgba(255,202,40,0.25);
+  border-radius: 12px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--yellow);
+}
+.ranking-timer-box span { font-family: monospace; font-size: 14px; }
+.ranking-rewards-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.ranking-reward-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 800;
+}
+.ranking-reward-badge.gold {
+  background: rgba(255,202,40,0.12);
+  border: 1px solid rgba(255,202,40,0.35);
+  color: #ffd700;
+}
+.ranking-reward-badge.silver {
+  background: rgba(176,196,222,0.1);
+  border: 1px solid rgba(176,196,222,0.3);
+  color: #b0c4de;
+}
+.ranking-reward-badge.bronze {
+  background: rgba(205,127,50,0.1);
+  border: 1px solid rgba(205,127,50,0.28);
+  color: #cd7f32;
+}
+.ranking-reward-mp {
+  font-family: 'Fredoka One', cursive;
+  font-size: 12px;
+  background: linear-gradient(90deg, #ff4db8, #a855f7, #00b4ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ══ MP en tarjeta de perfil ══ */
+.dp-mp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+  margin-top: 2px;
+}
+.dp-mp-mini-coin {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: conic-gradient(#ff4db8 0deg,#a855f7 120deg,#00b4ff 240deg,#ff4db8 360deg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 7px;
+  color: #fff;
+  font-family: 'Fredoka One',cursive;
+  font-weight: 900;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px rgba(255,80,180,0.5);
+}
+.dp-mp-mini-amount {
+  font-family: 'Fredoka One', cursive;
+  font-size: 11px;
+  background: linear-gradient(90deg, #ff4db8, #a855f7, #00b4ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ══ MP celebration toast ══ */
+.mp-reward-toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.8);
+  z-index: 9999;
+  background: linear-gradient(145deg, #100820, #2d1060);
+  border: 2px solid rgba(255,80,200,0.6);
+  border-radius: 24px;
+  padding: 32px 40px;
+  text-align: center;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.1), 0 0 80px rgba(168,85,247,0.5), 0 30px 80px rgba(0,0,0,0.8);
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.4s cubic-bezier(.34,1.56,.64,1);
+}
+.mp-reward-toast.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+  pointer-events: all;
+}
+.mp-reward-toast .coin-big {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: conic-gradient(#ff4db8 0deg,#a855f7 60deg,#00b4ff 120deg,#00e676 180deg,#ffca28 240deg,#ff4db8 300deg,#ff4db8 360deg);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fredoka One',cursive; font-size: 30px; color: #fff;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  margin: 0 auto 16px;
+  box-shadow: 0 0 0 6px rgba(168,85,247,0.2), 0 0 40px rgba(255,80,200,0.5);
+  animation: mpCoinSpin 4s linear infinite;
+}
+.mp-reward-toast .reward-title {
+  font-family: 'Fredoka One',cursive;
+  font-size: 22px;
+  color: #fff;
+  margin-bottom: 8px;
+}
+.mp-reward-toast .reward-amount {
+  font-family: 'Fredoka One',cursive;
+  font-size: 42px;
+  background: linear-gradient(90deg, #ff4db8, #a855f7, #00b4ff, #ffca28);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: mpTextShimmer 2s linear infinite;
+  margin-bottom: 6px;
+}
+.mp-reward-toast .reward-sub {
+  font-size: 13px;
+  color: rgba(255,255,255,0.45);
+  font-weight: 600;
+}
+.mp-reward-toast .reward-close-btn {
+  margin-top: 20px;
+  padding: 10px 28px;
+  background: linear-gradient(135deg, #a855f7, #7c3aed);
+  border: none;
+  border-radius: 20px;
+  color: #fff;
+  font-family: 'Fredoka One',cursive;
+  font-size: 14px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 16px rgba(124,58,237,0.4);
+  transition: filter 0.15s, transform 0.15s;
+}
+.mp-reward-toast .reward-close-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+
+
 .top-players-container {
   display: flex; gap: 16px; align-items: flex-end;
   padding: 24px 0 32px;
@@ -3311,6 +3763,14 @@ body::before {
   </div>
 
   <div class="topbar-actions">
+    <!-- MP TOKEN BADGE -->
+    <div class="mp-badge" id="mpTopbarBadge" onclick="openMpPanel()" title="Mis MP Tokens" style="display:none">
+      <div class="mp-coin">MP</div>
+      <div>
+        <div class="mp-amount" id="mpTopbarAmount">0</div>
+        <div class="mp-label">tokens</div>
+      </div>
+    </div>
     <div class="notif-btn" title="Notificaciones" id="notifBtn" onclick="toggleNotifPanel(event)">
       <svg width="20px" height="20px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;flex-shrink:0;color:currentColor"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       <div class="notif-dot" id="notifDot"></div>
@@ -3511,6 +3971,19 @@ body::before {
         </div>
         <div class="rch-spotlight rch-spotlight-1"></div>
         <div class="rch-spotlight rch-spotlight-2"></div>
+      </div>
+
+      <!-- WEEKLY INFO + REWARDS -->
+      <div class="ranking-weekly-info">
+        <div class="ranking-timer-box">
+          ⏰ Reinicio en: <span id="rankingCountdown">—</span>
+        </div>
+      </div>
+      <div class="ranking-rewards-row">
+        <span style="font-size:11px;font-weight:800;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:1px;">Premios al finalizar:</span>
+        <div class="ranking-reward-badge gold">🥇 <span class="ranking-reward-mp">100 MP</span></div>
+        <div class="ranking-reward-badge silver">🥈 <span class="ranking-reward-mp">50 MP</span></div>
+        <div class="ranking-reward-badge bronze">🥉 <span class="ranking-reward-mp">20 MP</span></div>
       </div>
 
       <div id="topPlayersContainer" class="top-players-container">
@@ -3937,6 +4410,11 @@ function makeDraggable(el, handleEl) {
                   <div class="dp-stat-val" id="pstatFavs">0</div>
                   <div class="dp-stat-lbl">Favs</div>
                 </div>
+              </div>
+              <!-- MP TOKEN ROW IN CARD -->
+              <div class="dp-mp-row" id="dp-mp-row-card">
+                <div class="dp-mp-mini-coin">MP</div>
+                <div class="dp-mp-mini-amount" id="dp-mp-card-amount">0 MP</div>
               </div>
               <div class="dp-card-id" id="dp-card-id">MIP-00000000</div>
             </div>
@@ -8203,6 +8681,348 @@ renderNotifList = function() {
 function openChatFromChip(friendId, friendName) {
   openChat(friendId, friendName, null, '🎮');
 }
+</script>
+<!-- ══════════════════ MP WALLET PANEL ══════════════════ -->
+<div class="mp-panel-overlay" id="mpPanelOverlay" onclick="closeMpPanel(event)">
+  <div class="mp-panel">
+    <button class="mp-panel-close" onclick="closeMpPanel()">✕</button>
+    <div class="mp-panel-header">
+      <div class="mp-panel-coin-big">MP</div>
+      <div class="mp-panel-title">Mis MP Tokens</div>
+      <div class="mp-panel-subtitle">Tu moneda en MiP HUB — usala para items futuros</div>
+    </div>
+    <div class="mp-balance-box">
+      <div class="mp-balance-label">Balance actual</div>
+      <div class="mp-balance-amount" id="mpPanelAmount">0</div>
+      <div class="mp-balance-unit">MP Tokens</div>
+    </div>
+    <div class="mp-history-title">📋 Historial</div>
+    <div class="mp-history-list" id="mpHistoryList">
+      <div class="mp-no-history">No hay movimientos todavía</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ MP REWARD TOAST ══════════════════ -->
+<div class="mp-reward-toast" id="mpRewardToast">
+  <div class="coin-big">MP</div>
+  <div class="reward-title" id="mpRewardTitle">¡Ganaste MP Tokens!</div>
+  <div class="reward-amount" id="mpRewardAmount">+100</div>
+  <div class="reward-sub" id="mpRewardSub">¡Llegaste al 1° lugar esta semana!</div>
+  <button class="reward-close-btn" onclick="closeMpRewardToast()">¡Genial! 🎉</button>
+</div>
+
+<!-- ══════════════════ MP TOKEN SYSTEM ══════════════════ -->
+<script>
+// ══════════════════════════════════════════════
+//  MP TOKEN SYSTEM — Sistema de tokens MiP HUB
+// ══════════════════════════════════════════════
+
+const MP_KEY       = 'miphub_mp_v1';
+const MP_HIST_KEY  = 'miphub_mp_history_v1';
+const MP_WEEK_KEY  = 'miphub_mp_week_v1'; // tracks which week rewards were given
+
+// ── Helpers ──────────────────────────────────
+function getMpBalance() {
+  try { return parseInt(localStorage.getItem(MP_KEY) || '0', 10) || 0; } catch(e) { return 0; }
+}
+function setMpBalance(val) {
+  try { localStorage.setItem(MP_KEY, String(Math.max(0, val))); } catch(e) {}
+}
+function getMpHistory() {
+  try { const d = localStorage.getItem(MP_HIST_KEY); return d ? JSON.parse(d) : []; } catch(e) { return []; }
+}
+function saveMpHistory(h) {
+  try { localStorage.setItem(MP_HIST_KEY, JSON.stringify(h.slice(0, 50))); } catch(e) {}
+}
+
+function addMpTokens(amount, description, icon) {
+  const prev = getMpBalance();
+  setMpBalance(prev + amount);
+  const h = getMpHistory();
+  h.unshift({ amount, description, icon: icon || '🪙', ts: Date.now(), type: amount > 0 ? 'plus' : 'minus' });
+  saveMpHistory(h);
+  updateMpUI();
+  // Also persist in Supabase if logged in
+  syncMpToSupabase();
+}
+
+function updateMpUI() {
+  const bal = getMpBalance();
+  const badgeEl    = document.getElementById('mpTopbarBadge');
+  const amountEl   = document.getElementById('mpTopbarAmount');
+  const panelEl    = document.getElementById('mpPanelAmount');
+  const cardAmtEl  = document.getElementById('dp-mp-card-amount');
+  if (amountEl)  amountEl.textContent  = bal.toLocaleString();
+  if (panelEl)   panelEl.textContent   = bal.toLocaleString();
+  if (cardAmtEl) cardAmtEl.textContent = bal.toLocaleString() + ' MP';
+  // Show badge only when logged in
+  if (badgeEl) badgeEl.style.display = currentUser ? 'inline-flex' : 'none';
+}
+
+// ── Supabase sync ────────────────────────────
+async function syncMpToSupabase() {
+  if (!currentUser) return;
+  try {
+    const bal = getMpBalance();
+    const hist = getMpHistory();
+    await sb.from('profiles').upsert({
+      id: currentUser.id,
+      mp_balance: bal,
+      mp_history: hist,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'id' });
+  } catch(e) { /* silently fail if columns don't exist yet */ }
+}
+
+async function loadMpFromSupabase(userId) {
+  try {
+    const { data } = await sb.from('profiles').select('mp_balance, mp_history').eq('id', userId).single();
+    if (data) {
+      // Use remote data if it's higher (conflict resolution: keep max)
+      const localBal  = getMpBalance();
+      const remoteBal = parseInt(data.mp_balance || '0', 10) || 0;
+      if (remoteBal > localBal) {
+        setMpBalance(remoteBal);
+        if (data.mp_history && Array.isArray(data.mp_history)) saveMpHistory(data.mp_history);
+      }
+      updateMpUI();
+    }
+  } catch(e) { /* columns may not exist — that's fine */ }
+}
+
+// ── Panel ────────────────────────────────────
+function openMpPanel() {
+  updateMpUI();
+  renderMpHistory();
+  document.getElementById('mpPanelOverlay').classList.add('open');
+}
+
+function closeMpPanel(e) {
+  if (e && e.target !== document.getElementById('mpPanelOverlay')) return;
+  document.getElementById('mpPanelOverlay').classList.remove('open');
+}
+
+function renderMpHistory() {
+  const list = document.getElementById('mpHistoryList');
+  if (!list) return;
+  const h = getMpHistory();
+  if (h.length === 0) {
+    list.innerHTML = '<div class="mp-no-history">No hay movimientos todavía</div>';
+    return;
+  }
+  list.innerHTML = h.map(item => {
+    const timeAgo = getTimeAgo ? getTimeAgo(item.ts) : new Date(item.ts).toLocaleDateString('es');
+    const sign = item.amount > 0 ? '+' : '';
+    const cls  = item.amount > 0 ? 'plus' : 'minus';
+    return `
+      <div class="mp-history-item">
+        <div class="mp-history-desc">
+          <span class="mp-history-icon">${item.icon || '🪙'}</span>
+          <div>
+            <div style="font-weight:700;font-size:12px;color:var(--text)">${escHtml ? escHtml(item.description) : item.description}</div>
+            <div class="mp-history-time">${timeAgo}</div>
+          </div>
+        </div>
+        <div class="mp-history-amount ${cls}">${sign}${item.amount} MP</div>
+      </div>`;
+  }).join('');
+}
+
+// ── Reward toast ─────────────────────────────
+function showMpRewardToast(amount, title, sub) {
+  const toast = document.getElementById('mpRewardToast');
+  if (!toast) return;
+  document.getElementById('mpRewardTitle').textContent  = title || '¡Ganaste MP Tokens!';
+  document.getElementById('mpRewardAmount').textContent = '+' + amount + ' MP';
+  document.getElementById('mpRewardSub').textContent    = sub || '';
+  toast.classList.add('show');
+}
+
+function closeMpRewardToast() {
+  const toast = document.getElementById('mpRewardToast');
+  if (toast) toast.classList.remove('show');
+}
+
+// ══════════════════════════════════════════════
+//  WEEKLY RANKING SYSTEM
+// ══════════════════════════════════════════════
+
+function getWeekKey(date) {
+  const d   = date || new Date();
+  const jan1 = new Date(d.getFullYear(), 0, 1);
+  const week = Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7);
+  return d.getFullYear() + '-W' + String(week).padStart(2, '0');
+}
+
+function getNextMonday() {
+  const now   = new Date();
+  const day   = now.getDay(); // 0=Sun, 1=Mon ...
+  const daysUntilMonday = day === 0 ? 1 : (8 - day);
+  const next  = new Date(now);
+  next.setDate(now.getDate() + daysUntilMonday);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+function updateRankingCountdown() {
+  const el = document.getElementById('rankingCountdown');
+  if (!el) return;
+  const next = getNextMonday();
+  const diff = next - Date.now();
+  if (diff <= 0) { el.textContent = '¡Terminando!'; return; }
+  const days    = Math.floor(diff / 86400000);
+  const hours   = Math.floor((diff % 86400000) / 3600000);
+  const minutes = Math.floor((diff % 3600000) / 60000);
+  const secs    = Math.floor((diff % 60000) / 1000);
+  if (days > 0)
+    el.textContent = `${days}d ${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+  else
+    el.textContent = `${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+}
+
+// Update countdown every second
+setInterval(updateRankingCountdown, 1000);
+updateRankingCountdown();
+
+// ── Check if week ended and give rewards ──────
+async function checkWeeklyRankingRewards() {
+  if (!currentUser) return;
+  const thisWeek = getWeekKey();
+  const doneKey  = 'miphub_rankdone_' + currentUser.id;
+  const lastDone = localStorage.getItem(doneKey) || '';
+  if (lastDone === thisWeek) return; // Already processed this week
+
+  // Check if we're at the START of a new week (Monday 00:00–04:00 window)
+  const now  = new Date();
+  const isNewWeekWindow = now.getDay() === 1 && now.getHours() < 4;
+  if (!isNewWeekWindow) return;
+
+  // Get previous week's ranking
+  const prevWeek = getWeekKey(new Date(Date.now() - 7 * 86400000));
+  const weekColKey = 'week_' + prevWeek.replace('-', '_');
+
+  try {
+    // Fetch top 3 players by weekly plays (previous week data stored in profiles)
+    const { data } = await sb.from('profiles')
+      .select('id, username, ' + weekColKey)
+      .order(weekColKey, { ascending: false })
+      .limit(3);
+
+    if (!data || data.length === 0) return;
+
+    const rewards = [100, 50, 20];
+    const titles  = ['1° lugar', '2° lugar', '3° lugar'];
+    const subs    = [
+      '¡Sos el mejor jugador de la semana!',
+      '¡Increíble, quedaste 2° esta semana!',
+      '¡Gran trabajo, top 3 esta semana!'
+    ];
+
+    for (let i = 0; i < data.length; i++) {
+      const player = data[i];
+      if (player.id === currentUser.id) {
+        const reward = rewards[i];
+        addMpTokens(reward, '🏆 Premio ranking semanal – ' + titles[i], '🏆');
+        showMpRewardToast(reward, '¡Premio semanal!', subs[i]);
+        break;
+      }
+    }
+    localStorage.setItem(doneKey, thisWeek);
+  } catch(e) { /* no weekly_col yet — skip */ }
+}
+
+// Also track weekly plays for the current user
+async function trackWeeklyPlay() {
+  if (!currentUser) return;
+  const colKey = 'week_' + getWeekKey().replace('-', '_');
+  try {
+    // Try to increment weekly play count (RPC or direct upsert)
+    await sb.rpc('increment_weekly_plays', { user_id: currentUser.id, week_key: colKey });
+  } catch(e) {
+    // Fallback: just do a raw upsert increment
+    try {
+      const { data } = await sb.from('profiles').select('id, ' + colKey).eq('id', currentUser.id).maybeSingle();
+      const prev = (data && data[colKey]) ? parseInt(data[colKey], 10) : 0;
+      await sb.from('profiles').upsert({
+        id: currentUser.id,
+        [colKey]: prev + 1,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'id' });
+    } catch(e2) { /* silently fail */ }
+  }
+}
+
+// ── Patch playGame to track weekly plays ──────
+const _origPlayGame = typeof playGame === 'function' ? playGame : null;
+if (_origPlayGame) {
+  playGame = async function(id) {
+    await _origPlayGame(id);
+    setTimeout(() => trackWeeklyPlay(), 500);
+  };
+}
+
+// ── MP in profile card (dp-card) ──────────────
+function renderMpInProfileCard() {
+  const card = document.getElementById('dp-card-front');
+  if (!card) return;
+  // Check if MP row already exists
+  if (card.querySelector('.dp-mp-row')) {
+    card.querySelector('.dp-mp-mini-amount').textContent = getMpBalance().toLocaleString() + ' MP';
+    return;
+  }
+  // Find divider to insert before stats
+  const statsEl = card.querySelector('.dp-stats');
+  if (!statsEl) return;
+  const mpRow = document.createElement('div');
+  mpRow.className = 'dp-mp-row';
+  mpRow.innerHTML = `
+    <div class="dp-mp-mini-coin">MP</div>
+    <div class="dp-mp-mini-amount">${getMpBalance().toLocaleString()} MP</div>
+  `;
+  card.insertBefore(mpRow, statsEl);
+}
+
+// ── Hook into handleAuthUser to init MP ───────
+const _origHandleAuthUserMp = handleAuthUser;
+handleAuthUser = function(user) {
+  _origHandleAuthUserMp(user);
+  if (user) {
+    // Show MP badge
+    const badge = document.getElementById('mpTopbarBadge');
+    if (badge) badge.style.display = 'inline-flex';
+    updateMpUI();
+    // Load from Supabase
+    setTimeout(() => {
+      loadMpFromSupabase(user.id);
+      checkWeeklyRankingRewards();
+    }, 3000);
+  } else {
+    const badge = document.getElementById('mpTopbarBadge');
+    if (badge) badge.style.display = 'none';
+  }
+};
+
+// ── Hook into openProfile to show MP ──────────
+const _origOpenProfileMp = openProfile;
+openProfile = function() {
+  _origOpenProfileMp();
+  setTimeout(renderMpInProfileCard, 80);
+};
+
+// ── Init on load ──────────────────────────────
+updateMpUI();
+
+// ── Also patch loadTopPlayers to show MP rewards info ──
+const _origLoadTopPlayers = typeof loadTopPlayers === 'function' ? loadTopPlayers : null;
+if (_origLoadTopPlayers) {
+  loadTopPlayers = async function() {
+    await _origLoadTopPlayers();
+    updateRankingCountdown();
+  };
+}
+
+console.log('[MP] Sistema de tokens MP iniciado ✅');
 </script>
 
 </body>
