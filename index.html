@@ -9027,7 +9027,8 @@ async function _renderWalletData() {
   const shortEmail = email.length > 30 ? email.slice(0, 28) + '…' : email;
   document.getElementById('mpWalletUserMail').textContent = shortEmail;
 
-  // Wallet ID — full UUID so it can be resolved exactly on send
+  // Wallet ID — full UUID with dashes so _walletIdToUuid can parse it correctly
+  // Format: MIP-XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX  (matches UUID 8-4-4-4-12)
   const uid = currentUser.id || '';
   const walletId = 'MIP-' + uid.toUpperCase();
   document.getElementById('mpWalletId').textContent = walletId;
@@ -9181,18 +9182,26 @@ async function submitSendTokens() {
       if (parsed) {
         let q;
         if (parsed.type === 'exact') {
-          // Formato nuevo: búsqueda exacta por UUID
-          q = sb.from('profiles').select('id,username').eq('id', parsed.uuid).maybeSingle();
+          // Formato nuevo: búsqueda exacta por UUID (UUID de Supabase siempre es lowercase)
+          q = sb.from('profiles').select('id,username').eq('id', parsed.uuid.toLowerCase()).maybeSingle();
         } else {
-          // Formato viejo: reconstruir UUID con regex sobre id::text
-          // UUID sin dashes empieza con los 24 chars del prefijo
+          // Formato viejo: MIP-00F2D3-0EC799-4538BE-F01AA6
+          // raw = 24 hex chars → reconstruir los primeros 4 grupos del UUID (8+4+4+4 = 20 chars)
           const p = parsed.prefix;
-          // Formato UUID: 8-4-4-4-12, sin dashes = 32 chars. Los primeros 24 son los nuestros.
-          const uuidPrefix = p.slice(0,8)+'-'+p.slice(8,12)+'-'+p.slice(12,16)+'-'+p.slice(16,20)+'-';
-          q = sb.from('profiles').select('id,username').like('id', uuidPrefix + '%').maybeSingle();
+          const uuidPrefix = (p.slice(0,8)+'-'+p.slice(8,12)+'-'+p.slice(12,16)+'-'+p.slice(16,20)+'-').toLowerCase();
+          // Supabase no soporta LIKE sobre columna uuid — traer perfiles y filtrar en JS
+          const { data: _rows, error: _rowsErr } = await sb.from('profiles').select('id,username');
+          if (!_rowsErr && _rows) {
+            const _match = _rows.find(r => r.id && r.id.toLowerCase().startsWith(uuidPrefix));
+            if (_match) { recipientId = _match.id; recipientName = _match.username || recipientRaw; }
+          }
+          q = null;
         }
-        const { data, error } = await q;
-        if (!error && data) { recipientId = data.id; recipientName = data.username || recipientRaw; }
+        // Solo ejecutar q si no fue resuelto por el bloque 'else' anterior
+        if (q) {
+          const { data, error } = await q;
+          if (!error && data) { recipientId = data.id; recipientName = data.username || recipientRaw; }
+        }
       }
     } else {
       const { data, error } = await sb
@@ -9202,7 +9211,8 @@ async function submitSendTokens() {
 
     if (!recipientId) {
       _setSendBtnState(false);
-      return _showSendResult('❌ Usuario no encontrado. Verificá el nombre exacto.', 'error');
+      console.warn('[wallet] Recipient not found for input:', recipientRaw);
+      return _showSendResult('❌ Usuario no encontrado. Verificá el nombre de usuario o el Wallet ID completo.', 'error');
     }
     if (recipientId === currentUser.id) {
       _setSendBtnState(false);
@@ -9276,17 +9286,17 @@ async function _manualTransfer(recipientId, recipientName, amount, message) {
       return _showSendResult(`❌ Saldo insuficiente. Tenés ${senderBalance.toLocaleString('es')} MP.`, 'error');
     }
 
-    // Descontar del remitente
+    // Descontar del remitente (sin lock optimista — evita falsos positivos de concurrencia)
     const { error: errDeduct } = await sb
       .from('profiles')
       .update({ mp_balance: senderBalance - amount })
       .eq('id', currentUser.id)
-      .eq('mp_balance', senderBalance); // optimistic lock — falla si cambió entre tanto
+      .gte('mp_balance', amount); // sólo falla si el balance bajó por debajo del monto
 
     if (errDeduct) {
-      // Puede que el balance cambió concurrentemente — reintentar una vez
+      // Falló el update — puede ser RLS, saldo insuficiente u otro error de DB
       _setSendBtnState(false);
-      return _showSendResult('❌ El saldo cambió durante el proceso. Intentá de nuevo.', 'error');
+      return _showSendResult('❌ No se pudo descontar el saldo. Verificá tu balance e intentá de nuevo.', 'error');
     }
 
     // Incrementar al destinatario con RPC incremental (evita race condition)
