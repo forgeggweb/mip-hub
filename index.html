@@ -4423,7 +4423,7 @@ function renderTopPlayers(players, container) {
         <div class="tp-xpbar-wrap">
           <div class="tp-xpbar ${medal}" style="width:${xpPcts[i]}%;animation-delay:${[0.6,0.45,0.75][i]}s;"></div>
         </div>
-        <button class="tp-view-btn ${medal}" onclick="event.stopPropagation();_openTopProfile(${JSON.stringify(uname)},${JSON.stringify(uid)})">
+        <button class="tp-view-btn ${medal}" data-uname="${escHtml(uname)}" data-uid="${escHtml(uid)}">
           Ver perfil →
         </button>
       </div>
@@ -4431,7 +4431,13 @@ function renderTopPlayers(players, container) {
     container.appendChild(card);
     // Make entire card clickable (not just button)
     card.addEventListener('click', (e) => {
-      if (!e.target.closest('.tp-view-btn')) {
+      const btn = e.target.closest('.tp-view-btn');
+      if (btn) {
+        e.stopPropagation();
+        const u = btn.dataset.uname || uname;
+        const i = btn.dataset.uid || uid;
+        _openTopProfile(u, i);
+      } else {
         _openTopProfile(uname, uid);
       }
     });
