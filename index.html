@@ -8400,4 +8400,966 @@ function openChatFromChip(friendId, friendName) {
 }
 </script>
 
+<!-- ══════════════════════════════════════════
+     MP WALLET PANEL — Styles
+══════════════════════════════════════════ -->
+<style>
+/* Overlay */
+.mp-wallet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.72);
+  backdrop-filter: blur(6px);
+  z-index: 9000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: mpWalletFadeIn 0.25s ease;
+}
+.mp-wallet-overlay.open { display: flex; }
+@keyframes mpWalletFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Card */
+.mp-wallet-card {
+  width: 100%;
+  max-width: 460px;
+  background: linear-gradient(145deg, #0e0f1e 0%, #14152d 60%, #1a1030 100%);
+  border: 1px solid rgba(0,180,255,0.25);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(124,58,237,0.15),
+    0 40px 80px rgba(0,0,0,0.9),
+    0 0 60px rgba(0,180,255,0.08);
+  animation: mpWalletSlideUp 0.3s cubic-bezier(.4,0,.2,1);
+  position: relative;
+}
+@keyframes mpWalletSlideUp {
+  from { transform: translateY(40px) scale(0.96); opacity: 0; }
+  to   { transform: translateY(0) scale(1);       opacity: 1; }
+}
+
+/* Subtle animated bg lines */
+.mp-wallet-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 30px,
+      rgba(0,180,255,0.025) 30px,
+      rgba(0,180,255,0.025) 31px
+    );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Glowing top accent bar */
+.mp-wallet-topbar {
+  height: 4px;
+  background: linear-gradient(90deg, #00b4ff, #7c3aed, #ff4db8, #00e676, #00b4ff);
+  background-size: 300% 100%;
+  animation: mpBarShimmer 4s linear infinite;
+}
+@keyframes mpBarShimmer {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 300% 50%; }
+}
+
+/* Close btn */
+.mp-wallet-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--muted);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  z-index: 10;
+}
+.mp-wallet-close:hover { background: rgba(255,255,255,0.14); color: #fff; transform: scale(1.1); }
+
+/* Header section */
+.mp-wallet-header {
+  padding: 28px 28px 18px;
+  position: relative;
+  z-index: 1;
+}
+.mp-wallet-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.mp-wallet-icon {
+  width: 46px;
+  height: 46px;
+  background: linear-gradient(135deg, #00b4ff22, #7c3aed22);
+  border: 2px solid rgba(0,180,255,0.4);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Fredoka One', cursive;
+  font-size: 16px;
+  font-weight: 900;
+  color: #00b4ff;
+  text-shadow: 0 0 10px rgba(0,180,255,0.6);
+  box-shadow: 0 0 20px rgba(0,180,255,0.2);
+  flex-shrink: 0;
+}
+.mp-wallet-title-col {}
+.mp-wallet-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+.mp-wallet-subtitle {
+  font-size: 11px;
+  color: rgba(0,180,255,0.6);
+  font-family: monospace;
+  margin-top: 2px;
+}
+
+/* Balance display */
+.mp-wallet-balance-section {
+  background: linear-gradient(135deg, rgba(0,180,255,0.08), rgba(124,58,237,0.08));
+  border: 1px solid rgba(0,180,255,0.18);
+  border-radius: 18px;
+  padding: 20px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.mp-wallet-balance-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+.mp-wallet-balance-amount {
+  font-family: 'Fredoka One', cursive;
+  font-size: 38px;
+  color: #fff;
+  line-height: 1;
+  text-shadow: 0 0 30px rgba(0,180,255,0.4);
+}
+.mp-wallet-balance-currency {
+  font-size: 14px;
+  color: var(--accent);
+  font-weight: 800;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.mp-wallet-coin-big {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  background: conic-gradient(#ff4db8 0deg,#a855f7 60deg,#00b4ff 120deg,#00e676 180deg,#ffca28 240deg,#ff4db8 300deg,#ff4db8 360deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Fredoka One', cursive;
+  font-size: 22px;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+  font-weight: 900;
+  flex-shrink: 0;
+  animation: mpCoinSpin 6s linear infinite, mpCoinGlow 2.5s ease-in-out infinite;
+  box-shadow: 0 0 22px rgba(255,80,180,0.7), 0 0 44px rgba(168,85,247,0.4), inset 0 1px 0 rgba(255,255,255,0.3);
+}
+@keyframes mpCoinGlow {
+  0%,100% { box-shadow: 0 0 22px rgba(255,80,180,0.7), 0 0 44px rgba(168,85,247,0.4), inset 0 1px 0 rgba(255,255,255,0.3); transform: scale(1); }
+  50%      { box-shadow: 0 0 36px rgba(255,80,180,0.95), 0 0 70px rgba(168,85,247,0.6), inset 0 1px 0 rgba(255,255,255,0.3); transform: scale(1.06); }
+}
+
+/* Wallet ID section */
+.mp-wallet-id-section {
+  padding: 0 28px;
+  margin-top: 16px;
+  position: relative;
+  z-index: 1;
+}
+.mp-wallet-id-box {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.mp-wallet-id-label {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.mp-wallet-id-value {
+  font-family: monospace;
+  font-size: 12px;
+  color: rgba(0,229,255,0.85);
+  letter-spacing: 0.5px;
+  word-break: break-all;
+}
+.mp-wallet-copy-btn {
+  background: rgba(0,180,255,0.12);
+  border: 1px solid rgba(0,180,255,0.25);
+  border-radius: 8px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-family: 'Nunito', sans-serif;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.mp-wallet-copy-btn:hover { background: rgba(0,180,255,0.22); transform: scale(1.04); }
+.mp-wallet-copy-btn.copied { background: rgba(0,230,118,0.15); border-color: rgba(0,230,118,0.4); color: var(--green); }
+
+/* Tabs */
+.mp-wallet-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 16px 28px 0;
+  position: relative;
+  z-index: 1;
+}
+.mp-wallet-tab {
+  flex: 1;
+  padding: 8px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 8px 8px 0 0;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+  background: transparent;
+}
+.mp-wallet-tab:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+.mp-wallet-tab.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(0,180,255,0.07); }
+
+/* Tab content */
+.mp-wallet-body {
+  padding: 16px 28px 28px;
+  position: relative;
+  z-index: 1;
+  min-height: 200px;
+}
+.mp-wallet-tab-pane { display: none; }
+.mp-wallet-tab-pane.active { display: block; }
+
+/* Transactions list */
+.mp-tx-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.mp-tx-list::-webkit-scrollbar { width: 4px; }
+.mp-tx-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+.mp-tx-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  transition: background 0.12s;
+}
+.mp-tx-item:hover { background: rgba(255,255,255,0.055); }
+.mp-tx-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.mp-tx-icon.in  { background: rgba(0,230,118,0.12); }
+.mp-tx-icon.out { background: rgba(255,68,68,0.12);  }
+.mp-tx-info { flex: 1; min-width: 0; }
+.mp-tx-desc {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mp-tx-date {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 2px;
+  font-family: monospace;
+}
+.mp-tx-amount {
+  font-family: 'Fredoka One', cursive;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+.mp-tx-amount.in  { color: var(--green); }
+.mp-tx-amount.out { color: var(--red);   }
+
+/* Empty state */
+.mp-tx-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 30px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* Stats row */
+.mp-wallet-stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.mp-wallet-stat-box {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px;
+  padding: 12px 10px;
+  text-align: center;
+}
+.mp-wallet-stat-val {
+  font-family: 'Fredoka One', cursive;
+  font-size: 18px;
+  color: var(--accent);
+}
+.mp-wallet-stat-lbl {
+  font-size: 9px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-weight: 700;
+  margin-top: 3px;
+}
+
+/* Send tokens section */
+.mp-send-field-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.mp-send-input {
+  width: 100%;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: 'Nunito', sans-serif;
+  padding: 11px 14px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  margin-bottom: 12px;
+}
+.mp-send-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(0,180,255,0.12);
+}
+.mp-send-input::placeholder { color: var(--muted); }
+.mp-send-quick-btns {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.mp-send-quick-btn {
+  background: rgba(0,180,255,0.1);
+  border: 1px solid rgba(0,180,255,0.2);
+  border-radius: 8px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 5px 11px;
+  cursor: pointer;
+  font-family: 'Nunito', sans-serif;
+  transition: all 0.12s;
+}
+.mp-send-quick-btn:hover { background: rgba(0,180,255,0.2); transform: scale(1.05); }
+.mp-send-btn {
+  width: 100%;
+  padding: 13px;
+  background: linear-gradient(135deg, #00b4ff, #7c3aed);
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 900;
+  font-family: 'Nunito', sans-serif;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.15s;
+  box-shadow: 0 4px 20px rgba(0,180,255,0.3);
+  margin-top: 4px;
+}
+.mp-send-btn:hover { filter: brightness(1.12); transform: translateY(-1px); box-shadow: 0 6px 28px rgba(0,180,255,0.45); }
+.mp-send-btn:active { transform: translateY(0); }
+.mp-send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.mp-send-note {
+  font-size: 10.5px;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 10px;
+  line-height: 1.5;
+}
+.mp-send-result {
+  display: none;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  margin-top: 12px;
+}
+.mp-send-result.success { background: rgba(0,230,118,0.12); border: 1px solid rgba(0,230,118,0.3); color: var(--green); }
+.mp-send-result.error   { background: rgba(255,68,68,0.12);  border: 1px solid rgba(255,68,68,0.3);  color: var(--red); }
+</style>
+
+<!-- ══════════════════════════════════════════
+     MP WALLET PANEL — HTML
+══════════════════════════════════════════ -->
+<div class="mp-wallet-overlay" id="mpWalletOverlay" onclick="closeMpPanelIfOutside(event)">
+  <div class="mp-wallet-card" id="mpWalletCard">
+    <div class="mp-wallet-topbar"></div>
+    <button class="mp-wallet-close" onclick="closeMpPanel()">✕</button>
+
+    <!-- Header -->
+    <div class="mp-wallet-header">
+      <div class="mp-wallet-badge-row">
+        <div class="mp-wallet-icon">MP</div>
+        <div class="mp-wallet-title-col">
+          <div class="mp-wallet-title">Mi Billetera MiP</div>
+          <div class="mp-wallet-subtitle" id="mpWalletUserMail">Cargando...</div>
+        </div>
+      </div>
+
+      <!-- Balance -->
+      <div class="mp-wallet-balance-section">
+        <div>
+          <div class="mp-wallet-balance-label">Saldo disponible</div>
+          <div class="mp-wallet-balance-amount">
+            <span id="mpWalletBalance">0</span>
+            <span class="mp-wallet-balance-currency">MP</span>
+          </div>
+        </div>
+        <div class="mp-wallet-coin-big">MP</div>
+      </div>
+    </div>
+
+    <!-- Wallet ID -->
+    <div class="mp-wallet-id-section">
+      <div class="mp-wallet-id-box">
+        <div>
+          <div class="mp-wallet-id-label">🔑 ID único de billetera</div>
+          <div class="mp-wallet-id-value" id="mpWalletId">—</div>
+        </div>
+        <button class="mp-wallet-copy-btn" id="mpWalletCopyBtn" onclick="copyWalletId()">📋 Copiar</button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="mp-wallet-tabs">
+      <div class="mp-wallet-tab active" onclick="switchWalletTab('history',this)">📋 Historial</div>
+      <div class="mp-wallet-tab" onclick="switchWalletTab('stats',this)">📊 Estadísticas</div>
+      <div class="mp-wallet-tab" onclick="switchWalletTab('send',this)">📤 Enviar</div>
+    </div>
+
+    <!-- Tab bodies -->
+    <div class="mp-wallet-body">
+
+      <!-- HISTORIAL -->
+      <div class="mp-wallet-tab-pane active" id="mpTabHistory">
+        <div class="mp-tx-list" id="mpTxList">
+          <div class="mp-tx-empty">
+            <span style="font-size:32px;">🪙</span>
+            Cargando transacciones...
+          </div>
+        </div>
+      </div>
+
+      <!-- ESTADÍSTICAS -->
+      <div class="mp-wallet-tab-pane" id="mpTabStats">
+        <div class="mp-wallet-stats-row">
+          <div class="mp-wallet-stat-box">
+            <div class="mp-wallet-stat-val" id="mpStatEarned">0</div>
+            <div class="mp-wallet-stat-lbl">Total ganado</div>
+          </div>
+          <div class="mp-wallet-stat-box">
+            <div class="mp-wallet-stat-val" id="mpStatSpent">0</div>
+            <div class="mp-wallet-stat-lbl">Total enviado</div>
+          </div>
+          <div class="mp-wallet-stat-box">
+            <div class="mp-wallet-stat-val" id="mpStatTxCount">0</div>
+            <div class="mp-wallet-stat-lbl">Transferencias</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ENVIAR -->
+      <div class="mp-wallet-tab-pane" id="mpTabSend">
+        <div class="mp-send-field-label">Destinatario (usuario o Wallet ID)</div>
+        <input class="mp-send-input" id="mpSendRecipient" placeholder="Ej: Lavelacontraluz o MIP-XXXXXX-..." />
+
+        <div class="mp-send-field-label">Cantidad de MP a enviar</div>
+        <input class="mp-send-input" id="mpSendAmount" type="number" min="1" placeholder="Ej: 100" />
+        <div class="mp-send-quick-btns">
+          <button class="mp-send-quick-btn" onclick="setQuickAmount(10)">10 MP</button>
+          <button class="mp-send-quick-btn" onclick="setQuickAmount(50)">50 MP</button>
+          <button class="mp-send-quick-btn" onclick="setQuickAmount(100)">100 MP</button>
+          <button class="mp-send-quick-btn" onclick="setQuickAmount(500)">500 MP</button>
+        </div>
+
+        <div class="mp-send-field-label">Mensaje (opcional)</div>
+        <input class="mp-send-input" id="mpSendMessage" placeholder="Ej: ¡Para ti, crack! 🎮" />
+
+        <button class="mp-send-btn" id="mpSendSubmitBtn" onclick="submitSendTokens()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Enviar tokens
+        </button>
+
+        <div class="mp-send-note">
+          Las transferencias son permanentes e irreversibles. Verificá el destinatario antes de confirmar.
+        </div>
+        <div class="mp-send-result" id="mpSendResult"></div>
+      </div>
+
+    </div><!-- /mp-wallet-body -->
+  </div><!-- /mp-wallet-card -->
+</div><!-- /mp-wallet-overlay -->
+
+<!-- ══════════════════════════════════════════
+     MP WALLET PANEL — JavaScript
+══════════════════════════════════════════ -->
+<script>
+// ── Wallet state ──────────────────────────────────────────
+let _mpWalletOpen = false;
+let _mpTransactions = []; // persisted locally
+
+function openMpPanel() {
+  if (!currentUser) return;
+  _mpWalletOpen = true;
+  document.getElementById('mpWalletOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  _renderWalletData();
+}
+
+function closeMpPanel() {
+  _mpWalletOpen = false;
+  document.getElementById('mpWalletOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function closeMpPanelIfOutside(e) {
+  if (e.target === document.getElementById('mpWalletOverlay')) closeMpPanel();
+}
+
+// ── Tab switching ──────────────────────────────────────────
+function switchWalletTab(tab, el) {
+  document.querySelectorAll('.mp-wallet-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.mp-wallet-tab-pane').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('mpTab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+}
+
+// ── Copy wallet ID ──────────────────────────────────────────
+async function copyWalletId() {
+  const id = document.getElementById('mpWalletId').textContent;
+  if (!id || id === '—') return;
+  try {
+    await navigator.clipboard.writeText(id);
+    const btn = document.getElementById('mpWalletCopyBtn');
+    btn.textContent = '✅ Copiado';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '📋 Copiar'; btn.classList.remove('copied'); }, 2000);
+  } catch(e) {}
+}
+
+// ── Load & render wallet data ──────────────────────────────
+async function _renderWalletData() {
+  if (!currentUser) return;
+
+  // User info
+  const email = currentUser.email || '';
+  const shortEmail = email.length > 30 ? email.slice(0, 28) + '…' : email;
+  document.getElementById('mpWalletUserMail').textContent = shortEmail;
+
+  // Wallet ID — use the user UUID formatted as wallet address
+  const uid = currentUser.id || '';
+  const walletId = 'MIP-' + uid.replace(/-/g,'').toUpperCase().slice(0,24).match(/.{1,6}/g).join('-');
+  document.getElementById('mpWalletId').textContent = walletId;
+
+  // Balance (already loaded in badge)
+  try {
+    const { data } = await sb.from('profiles').select('mp_balance').eq('id', currentUser.id).single();
+    const bal = data?.mp_balance ?? 0;
+    document.getElementById('mpWalletBalance').textContent = bal.toLocaleString('es');
+    updateMpBadge(bal);
+  } catch(e) {}
+
+  // Load transactions from Supabase if table exists, else use localStorage mock
+  await _loadTransactions();
+}
+
+async function _loadTransactions() {
+  let txs = [];
+
+  // Try to load from supabase mp_transactions table
+  try {
+    const { data, error } = await sb
+      .from('mp_transactions')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false })
+      .limit(30);
+    if (!error && data && data.length > 0) {
+      txs = data.map(t => ({
+        id: t.id,
+        type: t.amount >= 0 ? 'in' : 'out',
+        desc: t.description || (t.amount >= 0 ? 'Tokens recibidos' : 'Tokens usados'),
+        amount: t.amount,
+        date: new Date(t.created_at).toLocaleDateString('es', { day:'2-digit', month:'short', year:'2-digit', hour:'2-digit', minute:'2-digit' })
+      }));
+    }
+  } catch(e) {}
+
+  // If no real data, build a mock based on current balance
+  if (txs.length === 0) {
+    const balEl = document.getElementById('mpWalletBalance').textContent.replace(/\./g,'');
+    const bal = parseInt(balEl) || 0;
+    if (bal > 0) {
+      txs = [
+        { id:'t1', type:'in', desc:'Bienvenido a MiP HUB 🎉', amount: bal, date: _fakeDate(7) },
+      ];
+    }
+  }
+
+  _mpTransactions = txs;
+  _renderTxList();
+  _renderStats();
+}
+
+function _fakeDate(daysAgo) {
+  const d = new Date(Date.now() - daysAgo * 864e5);
+  return d.toLocaleDateString('es', { day:'2-digit', month:'short', year:'2-digit', hour:'2-digit', minute:'2-digit' });
+}
+
+function _renderTxList() {
+  const list = document.getElementById('mpTxList');
+  if (_mpTransactions.length === 0) {
+    list.innerHTML = `<div class="mp-tx-empty"><span style="font-size:32px;">📭</span>Aún no hay transacciones</div>`;
+    return;
+  }
+  list.innerHTML = _mpTransactions.map(tx => `
+    <div class="mp-tx-item">
+      <div class="mp-tx-icon ${tx.type}">${tx.type === 'in' ? '⬆️' : '⬇️'}</div>
+      <div class="mp-tx-info">
+        <div class="mp-tx-desc">${escHtml(tx.desc)}</div>
+        <div class="mp-tx-date">${tx.date}</div>
+      </div>
+      <div class="mp-tx-amount ${tx.type}">${tx.type === 'in' ? '+' : ''}${tx.amount.toLocaleString('es')} MP</div>
+    </div>
+  `).join('');
+}
+
+function _renderStats() {
+  let earned = 0, spent = 0;
+  _mpTransactions.forEach(tx => {
+    if (tx.amount > 0) earned += tx.amount;
+    else spent += Math.abs(tx.amount);
+  });
+  document.getElementById('mpStatEarned').textContent = earned.toLocaleString('es');
+  document.getElementById('mpStatSpent').textContent = spent.toLocaleString('es');
+  document.getElementById('mpStatTxCount').textContent = _mpTransactions.length;
+}
+
+// Close with Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && _mpWalletOpen) closeMpPanel();
+});
+
+// ── Send tokens ──────────────────────────────────────────
+function setQuickAmount(n) {
+  document.getElementById('mpSendAmount').value = n;
+}
+
+function _showSendResult(msg, type) {
+  const el = document.getElementById('mpSendResult');
+  el.textContent = msg;
+  el.className = 'mp-send-result ' + type;
+  el.style.display = 'block';
+  if (type === 'success') setTimeout(() => { el.style.display = 'none'; }, 6000);
+}
+
+const _SEND_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`;
+
+function _setSendBtnState(loading) {
+  const btn = document.getElementById('mpSendSubmitBtn');
+  btn.disabled = loading;
+  btn.innerHTML = loading
+    ? `<span style="display:inline-block;animation:mpSpin 0.8s linear infinite">⏳</span> Procesando...`
+    : `${_SEND_ICON} Enviar tokens`;
+}
+
+// Parse wallet ID back to UUID (MIP-3169B9-CE33AD-46CE9B-770A9F → uuid)
+function _walletIdToUuid(walletId) {
+  const raw = walletId.replace(/^MIP-/,'').replace(/-/g,'').toLowerCase();
+  if (raw.length < 24) return null;
+  // We used: uid.replace(/-/g,'').toUpperCase().slice(0,24)
+  // So raw is the first 24 hex chars of the UUID (without dashes)
+  // We can only use it for a LIKE query on the id, or store/search differently
+  // Better: store full UUID in a separate field or search by first 24 chars
+  return raw; // partial UUID prefix
+}
+
+async function submitSendTokens() {
+  if (!currentUser) return;
+
+  const recipientRaw = document.getElementById('mpSendRecipient').value.trim();
+  const amount       = parseInt(document.getElementById('mpSendAmount').value) || 0;
+  const message      = document.getElementById('mpSendMessage').value.trim();
+
+  // ── Validaciones básicas ──
+  if (!recipientRaw) return _showSendResult('❌ Ingresá el nombre de usuario del destinatario.', 'error');
+  if (amount < 1)    return _showSendResult('❌ La cantidad mínima es 1 MP.', 'error');
+
+  _setSendBtnState(true);
+  document.getElementById('mpSendResult').style.display = 'none';
+
+  try {
+    // ── 1. Resolver destinatario ──
+    let recipientId   = null;
+    let recipientName = recipientRaw;
+
+    if (recipientRaw.toUpperCase().startsWith('MIP-')) {
+      // Buscar por prefijo del UUID (los primeros 24 chars hex del ID)
+      const prefix = _walletIdToUuid(recipientRaw);
+      if (prefix) {
+        // Supabase supports LIKE on UUID cast to text
+        const { data, error } = await sb
+          .from('profiles')
+          .select('id,username')
+          .ilike('id::text', prefix + '%')
+          .maybeSingle();
+        if (!error && data) { recipientId = data.id; recipientName = data.username || recipientRaw; }
+      }
+    } else {
+      // Buscar por username exacto (case-insensitive)
+      const { data, error } = await sb
+        .from('profiles')
+        .select('id,username')
+        .ilike('username', recipientRaw)
+        .maybeSingle();
+      if (!error && data) { recipientId = data.id; recipientName = data.username || recipientRaw; }
+    }
+
+    if (!recipientId) {
+      _setSendBtnState(false);
+      return _showSendResult('❌ Usuario no encontrado. Verificá el nombre exacto.', 'error');
+    }
+    if (recipientId === currentUser.id) {
+      _setSendBtnState(false);
+      return _showSendResult('❌ No podés enviarte tokens a vos mismo.', 'error');
+    }
+
+    // ── 2. Intentar vía RPC atómica (si existe la función en Supabase) ──
+    //    CREATE OR REPLACE FUNCTION transfer_mp(sender uuid, receiver uuid, amount int, msg text)
+    //    RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER AS $$
+    //    DECLARE s_bal int;
+    //    BEGIN
+    //      SELECT mp_balance INTO s_bal FROM profiles WHERE id = sender FOR UPDATE;
+    //      IF s_bal IS NULL OR s_bal < amount THEN
+    //        RETURN jsonb_build_object('ok', false, 'error', 'insufficient_balance');
+    //      END IF;
+    //      UPDATE profiles SET mp_balance = mp_balance - amount WHERE id = sender;
+    //      UPDATE profiles SET mp_balance = mp_balance + amount WHERE id = receiver;
+    //      INSERT INTO mp_transactions(user_id, amount, description)
+    //        VALUES (sender, -amount, 'Enviado a ' || receiver::text || CASE WHEN msg <> '' THEN ': ' || msg ELSE '' END),
+    //               (receiver, amount, 'Recibido de ' || sender::text || CASE WHEN msg <> '' THEN ': ' || msg ELSE '' END);
+    //      RETURN jsonb_build_object('ok', true);
+    //    END; $$;
+    const { data: rpcData, error: rpcError } = await sb.rpc('transfer_mp', {
+      sender:   currentUser.id,
+      receiver: recipientId,
+      amount:   amount,
+      msg:      message
+    });
+
+    if (!rpcError && rpcData?.ok === true) {
+      // ✅ RPC exitosa
+      await _postSendSuccess(amount, recipientName, message);
+      return;
+    }
+
+    // Si la RPC no existe (PGRST202) — hacer manualmente con doble update
+    if (rpcError && (rpcError.code === 'PGRST202' || rpcError.message?.includes('Could not find'))) {
+      await _manualTransfer(recipientId, recipientName, amount, message);
+      return;
+    }
+
+    // RPC existió pero devolvió error lógico (ej: saldo insuficiente desde el server)
+    if (rpcData?.ok === false) {
+      _setSendBtnState(false);
+      const msg_err = rpcData.error === 'insufficient_balance'
+        ? '❌ Saldo insuficiente.'
+        : '❌ Error al procesar: ' + (rpcData.error || 'desconocido');
+      return _showSendResult(msg_err, 'error');
+    }
+
+    throw rpcError || new Error('RPC failed');
+
+  } catch(err) {
+    console.error('[wallet] submitSendTokens error:', err);
+    _setSendBtnState(false);
+    _showSendResult('❌ Error inesperado. Intentá de nuevo.', 'error');
+  }
+}
+
+// Fallback manual (sin RPC atómica)
+async function _manualTransfer(recipientId, recipientName, amount, message) {
+  try {
+    // Leer balance del remitente con verificación
+    const { data: senderData, error: sErr } = await sb
+      .from('profiles').select('mp_balance').eq('id', currentUser.id).single();
+    if (sErr) throw sErr;
+    const senderBalance = senderData?.mp_balance ?? 0;
+
+    if (amount > senderBalance) {
+      _setSendBtnState(false);
+      return _showSendResult(`❌ Saldo insuficiente. Tenés ${senderBalance.toLocaleString('es')} MP.`, 'error');
+    }
+
+    // Descontar del remitente
+    const { error: errDeduct } = await sb
+      .from('profiles')
+      .update({ mp_balance: senderBalance - amount })
+      .eq('id', currentUser.id)
+      .eq('mp_balance', senderBalance); // optimistic lock — falla si cambió entre tanto
+
+    if (errDeduct) {
+      // Puede que el balance cambió concurrentemente — reintentar una vez
+      _setSendBtnState(false);
+      return _showSendResult('❌ El saldo cambió durante el proceso. Intentá de nuevo.', 'error');
+    }
+
+    // Incrementar al destinatario con RPC incremental (evita race condition)
+    const { error: errCredit } = await sb.rpc('increment_mp', {
+      user_id: recipientId,
+      delta:   amount
+    });
+
+    if (errCredit) {
+      // increment_mp no existe — hacer con read + update
+      const { data: recData } = await sb.from('profiles').select('mp_balance').eq('id', recipientId).single();
+      const recBalance = recData?.mp_balance ?? 0;
+      await sb.from('profiles').update({ mp_balance: recBalance + amount }).eq('id', recipientId);
+    }
+
+    // Registrar en mp_transactions (best-effort)
+    try {
+      const senderUsername = profile?.username || currentUser.email?.split('@')[0] || 'alguien';
+      const now = new Date().toISOString();
+      await sb.from('mp_transactions').insert([
+        {
+          user_id:     currentUser.id,
+          amount:      -amount,
+          description: `Enviado a ${recipientName}${message ? ': ' + message : ''}`,
+          created_at:  now
+        },
+        {
+          user_id:     recipientId,
+          amount:      amount,
+          description: `Recibido de ${senderUsername}${message ? ': ' + message : ''}`,
+          created_at:  now
+        }
+      ]);
+    } catch(txErr) {
+      console.warn('[wallet] mp_transactions insert failed (tabla puede no existir):', txErr);
+    }
+
+    await _postSendSuccess(amount, recipientName, message);
+
+  } catch(err) {
+    console.error('[wallet] _manualTransfer error:', err);
+    _setSendBtnState(false);
+    _showSendResult('❌ Falló la transferencia. Intentá de nuevo.', 'error');
+  }
+}
+
+async function _postSendSuccess(amount, recipientName, message) {
+  // Recargar balance real desde Supabase
+  try {
+    const { data } = await sb.from('profiles').select('mp_balance').eq('id', currentUser.id).single();
+    const newBal = data?.mp_balance ?? 0;
+    updateMpBadge(newBal);
+    document.getElementById('mpWalletBalance').textContent = newBal.toLocaleString('es');
+  } catch(e) {}
+
+  // Limpiar formulario
+  document.getElementById('mpSendRecipient').value = '';
+  document.getElementById('mpSendAmount').value    = '';
+  document.getElementById('mpSendMessage').value   = '';
+
+  // Recargar historial
+  await _loadTransactions();
+
+  _setSendBtnState(false);
+  _showSendResult(`✅ ¡Enviaste ${amount.toLocaleString('es')} MP a ${recipientName} exitosamente!`, 'success');
+
+  // Volver al historial para que vean la tx
+  setTimeout(() => {
+    const histTab = document.querySelector('.mp-wallet-tab');
+    if (histTab) switchWalletTab('history', histTab);
+  }, 1800);
+}
+
+// Spin animation for loading state
+const _mpSpinStyle = document.createElement('style');
+_mpSpinStyle.textContent = '@keyframes mpSpin { to { transform: rotate(360deg); } }';
+document.head.appendChild(_mpSpinStyle);
+</script>
+
 </body>
