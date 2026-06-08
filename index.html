@@ -6601,6 +6601,8 @@ function handleAuthUser(user) {
     // Cargar solicitudes de amistad pendientes
     setTimeout(() => { loadFriendNotifications(); renderFriendsList(); }, 1500);
     // Iniciar canal realtime de notificaciones de transferencias
+    _transferNotifInited = false;
+    if (_transferNotifChannel) { try { sb.removeChannel(_transferNotifChannel); } catch(e){} _transferNotifChannel = null; }
     setTimeout(initTransferNotifRealtime, 2000);
   } else {
     if (loginBtn)  loginBtn.style.display  = 'block';
@@ -6993,57 +6995,67 @@ let _transferNotifChannel = null;
 let _transferNotifInited = false;
 
 function initTransferNotifRealtime() {
-  if (_transferNotifInited || !currentUser) return;
+  if (!currentUser) return;
+  // Si ya hay un canal activo para este usuario, no duplicar
+  if (_transferNotifInited && _transferNotifChannel) return;
   _transferNotifInited = true;
   try {
+    // Sin filter= para compatibilidad con plan gratuito de Supabase
+    // Filtramos manualmente en el callback por user_id
     _transferNotifChannel = sb.channel('notif-mp-received-' + currentUser.id)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
-        table: 'mp_transactions',
-        filter: `user_id=eq.${currentUser.id}`
+        table: 'mp_transactions'
       }, async (payload) => {
         const tx = payload.new;
-        if (!tx || tx.amount <= 0) return; // solo recibos (amount positivo)
-        // Buscar nombre del remitente desde la descripción o perfil
+        if (!tx) return;
+        // Solo procesar si la transacción es para el usuario actual
+        if (tx.user_id !== currentUser.id) return;
+        // Solo recibos (amount positivo), ignorar débitos
+        if (tx.amount <= 0) return;
+
+        // La descripción guarda el nombre de usuario: "Recibido de NombreUsuario: mensaje"
+        // o también puede venir con UUID si la RPC lo insertó así
         let senderName = 'alguien';
-        let senderAvatar = null;
-        // La descripción suele ser "Recibido de <uuid>: mensaje"
-        const descMatch = (tx.description || '').match(/Recibido de ([0-9a-f-]{36})/i);
-        const senderId = descMatch ? descMatch[1] : null;
-        if (senderId) {
-          try {
-            const { data } = await sb.from('profiles')
-              .select('username, avatar_url')
-              .eq('id', senderId).single();
-            if (data) {
-              senderName = data.username || senderName;
-              senderAvatar = data.avatar_url || null;
-            }
-          } catch(e) {}
+        const desc = tx.description || '';
+
+        // Intentar extraer nombre del remitente de la descripción
+        const nameMatch = desc.match(/^Recibido de ([^:]+)/i);
+        if (nameMatch) {
+          const rawName = nameMatch[1].trim();
+          // Si parece un UUID, buscar el perfil; si no, usarlo directo como nombre
+          if (/^[0-9a-f-]{36}$/i.test(rawName)) {
+            try {
+              const { data } = await sb.from('profiles')
+                .select('username').eq('id', rawName).single();
+              if (data) senderName = data.username || senderName;
+            } catch(e) {}
+          } else {
+            senderName = rawName;
+          }
         }
-        // Extraer mensaje opcional de la descripción
-        const msgMatch = (tx.description || '').match(/:\s*(.+)$/);
-        const message = (msgMatch && !msgMatch[1].startsWith(senderId || '')) ? msgMatch[1] : '';
+
+        // Extraer mensaje opcional (lo que viene después del primer ":")
+        const msgMatch = desc.match(/Recibido de [^:]+:\s*(.+)$/i);
+        const message = msgMatch ? msgMatch[1].trim() : '';
 
         addTransferNotification({
           amount: tx.amount,
           senderName,
-          senderAvatar,
+          senderAvatar: null,
           message,
-          txId: tx.id || tx.created_at,
+          txId: tx.id || (tx.user_id + '_' + tx.created_at),
         });
       })
       .subscribe((status, err) => {
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.warn('[NOTIF TX] Canal con error, reintentando en 5s...');
           _transferNotifInited = false;
           _transferNotifChannel = null;
           setTimeout(initTransferNotifRealtime, 5000);
         }
       });
-    console.log('[NOTIF TX] Canal realtime suscrito para transferencias de', currentUser.id);
-  } catch(e) { console.warn('[NOTIF TX] Error iniciando realtime de transferencias:', e); }
+  } catch(e) { console.warn('[NOTIF TX] Error iniciando realtime:', e); }
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
