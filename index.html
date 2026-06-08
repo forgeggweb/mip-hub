@@ -6600,6 +6600,8 @@ function handleAuthUser(user) {
     }, 2 * 60 * 1000);
     // Cargar solicitudes de amistad pendientes
     setTimeout(() => { loadFriendNotifications(); renderFriendsList(); }, 1500);
+    // Iniciar canal realtime de notificaciones de transferencias
+    setTimeout(initTransferNotifRealtime, 2000);
   } else {
     if (loginBtn)  loginBtn.style.display  = 'block';
     if (logoutBtn) logoutBtn.style.display = 'none';
@@ -6804,16 +6806,22 @@ function renderNotifList() {
 
     const timeAgo = getTimeAgo(n.ts);
     // Mostrar avatar del autor; si no, thumbnail del juego; si no, emoji de género
-    const iconHtml = n.authorAvatar
-      ? `<img src="${escHtml(n.authorAvatar)}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">`
-      : n.thumbnail
-        ? `<img src="${escHtml(n.thumbnail)}" alt="" style="width:36px;height:36px;border-radius:8px;object-fit:cover;">`
-        : `<span style="font-size:20px">${genreEmoji[n.genre] || '🎮'}</span>`;
+    const iconHtml = n.type === 'mp_received'
+      ? `<span style="font-size:22px;line-height:36px">💰</span>`
+      : n.authorAvatar
+        ? `<img src="${escHtml(n.authorAvatar)}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">`
+        : n.thumbnail
+          ? `<img src="${escHtml(n.thumbnail)}" alt="" style="width:36px;height:36px;border-radius:8px;object-fit:cover;">`
+          : `<span style="font-size:20px">${genreEmoji[n.genre] || '🎮'}</span>`;
+
+    const textHtml = n.type === 'mp_received'
+      ? `💰 Recibiste <strong style="color:var(--green)">+${escHtml(String(n.amount))} MP</strong> de <strong>${escHtml(n.senderName || 'alguien')}</strong>${n.message ? ': <em>' + escHtml(n.message) + '</em>' : ''}`
+      : `🆕 <strong>${escHtml(n.authorName || 'Alguien')}</strong> publicó <strong>${escHtml(n.gameName || 'Un juego')}</strong>`;
 
     item.innerHTML = `
       <div class="notif-item-icon">${iconHtml}</div>
       <div class="notif-item-body">
-        <div class="notif-item-text">🆕 <strong>${escHtml(n.authorName || 'Alguien')}</strong> publicó <strong>${escHtml(n.gameName || 'Un juego')}</strong></div>
+        <div class="notif-item-text">${textHtml}</div>
         <div class="notif-item-time">${timeAgo}</div>
       </div>`;
     list.appendChild(item);
@@ -6958,12 +6966,95 @@ async function pollNewGames() {
   } catch(e) {}
 }
 
+// ── NOTIFICACIONES DE TRANSFERENCIAS MP ──────────────────────────────────────
+function addTransferNotification({ amount, senderName, senderAvatar, message, txId }) {
+  // Evitar duplicados por ID de transacción
+  if (txId && notifications.find(n => n.txId === txId)) return;
+  const notif = {
+    id: 'tx_' + Date.now(),
+    txId: txId || null,
+    type: 'mp_received',
+    amount,
+    senderName: senderName || 'alguien',
+    senderAvatar: senderAvatar || null,
+    message: message || '',
+    ts: Date.now(),
+    read: false,
+  };
+  notifications.unshift(notif);
+  saveNotifications();
+  updateNotifBadge();
+  renderNotifList();
+  toast(`💰 Recibiste <strong>+${amount} MP</strong> de <strong>${senderName || 'alguien'}</strong>`, 'success');
+}
+
+// Canal realtime: escucha INSERT en mp_transactions donde el receptor soy yo
+let _transferNotifChannel = null;
+let _transferNotifInited = false;
+
+function initTransferNotifRealtime() {
+  if (_transferNotifInited || !currentUser) return;
+  _transferNotifInited = true;
+  try {
+    _transferNotifChannel = sb.channel('notif-mp-received-' + currentUser.id)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'mp_transactions',
+        filter: `user_id=eq.${currentUser.id}`
+      }, async (payload) => {
+        const tx = payload.new;
+        if (!tx || tx.amount <= 0) return; // solo recibos (amount positivo)
+        // Buscar nombre del remitente desde la descripción o perfil
+        let senderName = 'alguien';
+        let senderAvatar = null;
+        // La descripción suele ser "Recibido de <uuid>: mensaje"
+        const descMatch = (tx.description || '').match(/Recibido de ([0-9a-f-]{36})/i);
+        const senderId = descMatch ? descMatch[1] : null;
+        if (senderId) {
+          try {
+            const { data } = await sb.from('profiles')
+              .select('username, avatar_url')
+              .eq('id', senderId).single();
+            if (data) {
+              senderName = data.username || senderName;
+              senderAvatar = data.avatar_url || null;
+            }
+          } catch(e) {}
+        }
+        // Extraer mensaje opcional de la descripción
+        const msgMatch = (tx.description || '').match(/:\s*(.+)$/);
+        const message = (msgMatch && !msgMatch[1].startsWith(senderId || '')) ? msgMatch[1] : '';
+
+        addTransferNotification({
+          amount: tx.amount,
+          senderName,
+          senderAvatar,
+          message,
+          txId: tx.id || tx.created_at,
+        });
+      })
+      .subscribe((status, err) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('[NOTIF TX] Canal con error, reintentando en 5s...');
+          _transferNotifInited = false;
+          _transferNotifChannel = null;
+          setTimeout(initTransferNotifRealtime, 5000);
+        }
+      });
+    console.log('[NOTIF TX] Canal realtime suscrito para transferencias de', currentUser.id);
+  } catch(e) { console.warn('[NOTIF TX] Error iniciando realtime de transferencias:', e); }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 // Init notifications on load
 loadNotifications();
 updateNotifBadge();
 renderNotifList();
 // Start realtime after a short delay to let Supabase init
 setTimeout(initNotifRealtime, 2000);
+// Transfer notifications realtime (needs currentUser — init after login)
+setTimeout(initTransferNotifRealtime, 2500);
 // Also start polling as fallback (runs every 30s)
 setTimeout(async () => { await pollNewGames(); setInterval(pollNewGames, 30000); }, 3000);
 
