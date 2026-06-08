@@ -9027,9 +9027,9 @@ async function _renderWalletData() {
   const shortEmail = email.length > 30 ? email.slice(0, 28) + '…' : email;
   document.getElementById('mpWalletUserMail').textContent = shortEmail;
 
-  // Wallet ID — use the user UUID formatted as wallet address
+  // Wallet ID — full UUID so it can be resolved exactly on send
   const uid = currentUser.id || '';
-  const walletId = 'MIP-' + uid.replace(/-/g,'').toUpperCase().slice(0,24).match(/.{1,6}/g).join('-');
+  const walletId = 'MIP-' + uid.toUpperCase();
   document.getElementById('mpWalletId').textContent = walletId;
 
   // Balance (already loaded in badge)
@@ -9144,15 +9144,19 @@ function _setSendBtnState(loading) {
     : `${_SEND_ICON} Enviar tokens`;
 }
 
-// Parse wallet ID back to UUID (MIP-3169B9-CE33AD-46CE9B-770A9F → uuid)
+// Parse wallet ID back to UUID — soporta ambos formatos:
+// Nuevo: MIP-3169B9CE-33AD-46CE-9B77-0A9F39B26F73 (UUID completo)
+// Viejo: MIP-00F2D3-0EC799-4538BE-F01AA6 (24 chars hex en grupos de 6)
 function _walletIdToUuid(walletId) {
-  const raw = walletId.replace(/^MIP-/,'').replace(/-/g,'').toLowerCase();
-  if (raw.length < 24) return null;
-  // We used: uid.replace(/-/g,'').toUpperCase().slice(0,24)
-  // So raw is the first 24 hex chars of the UUID (without dashes)
-  // We can only use it for a LIKE query on the id, or store/search differently
-  // Better: store full UUID in a separate field or search by first 24 chars
-  return raw; // partial UUID prefix
+  const inner = walletId.replace(/^MIP-/i, '');
+  // Formato nuevo: UUID completo (8-4-4-4-12)
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(inner))
+    return { type: 'exact', uuid: inner.toLowerCase() };
+  // Formato viejo: 24 chars hex en grupos de 6 → prefijo del UUID sin dashes
+  const raw = inner.replace(/-/g, '').toLowerCase();
+  if (/^[0-9a-f]{24}$/.test(raw))
+    return { type: 'prefix', prefix: raw };
+  return null;
 }
 
 async function submitSendTokens() {
@@ -9162,7 +9166,6 @@ async function submitSendTokens() {
   const amount       = parseInt(document.getElementById('mpSendAmount').value) || 0;
   const message      = document.getElementById('mpSendMessage').value.trim();
 
-  // ── Validaciones básicas ──
   if (!recipientRaw) return _showSendResult('❌ Ingresá el nombre de usuario del destinatario.', 'error');
   if (amount < 1)    return _showSendResult('❌ La cantidad mínima es 1 MP.', 'error');
 
@@ -9170,29 +9173,30 @@ async function submitSendTokens() {
   document.getElementById('mpSendResult').style.display = 'none';
 
   try {
-    // ── 1. Resolver destinatario ──
     let recipientId   = null;
     let recipientName = recipientRaw;
 
     if (recipientRaw.toUpperCase().startsWith('MIP-')) {
-      // Buscar por prefijo del UUID (los primeros 24 chars hex del ID)
-      const prefix = _walletIdToUuid(recipientRaw);
-      if (prefix) {
-        // Supabase supports LIKE on UUID cast to text
-        const { data, error } = await sb
-          .from('profiles')
-          .select('id,username')
-          .ilike('id::text', prefix + '%')
-          .maybeSingle();
+      const parsed = _walletIdToUuid(recipientRaw);
+      if (parsed) {
+        let q;
+        if (parsed.type === 'exact') {
+          // Formato nuevo: búsqueda exacta por UUID
+          q = sb.from('profiles').select('id,username').eq('id', parsed.uuid).maybeSingle();
+        } else {
+          // Formato viejo: reconstruir UUID con regex sobre id::text
+          // UUID sin dashes empieza con los 24 chars del prefijo
+          const p = parsed.prefix;
+          // Formato UUID: 8-4-4-4-12, sin dashes = 32 chars. Los primeros 24 son los nuestros.
+          const uuidPrefix = p.slice(0,8)+'-'+p.slice(8,12)+'-'+p.slice(12,16)+'-'+p.slice(16,20)+'-';
+          q = sb.from('profiles').select('id,username').like('id', uuidPrefix + '%').maybeSingle();
+        }
+        const { data, error } = await q;
         if (!error && data) { recipientId = data.id; recipientName = data.username || recipientRaw; }
       }
     } else {
-      // Buscar por username exacto (case-insensitive)
       const { data, error } = await sb
-        .from('profiles')
-        .select('id,username')
-        .ilike('username', recipientRaw)
-        .maybeSingle();
+        .from('profiles').select('id,username').ilike('username', recipientRaw).maybeSingle();
       if (!error && data) { recipientId = data.id; recipientName = data.username || recipientRaw; }
     }
 
