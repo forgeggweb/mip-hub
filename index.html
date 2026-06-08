@@ -3286,6 +3286,88 @@ body::before {
   .tp-card.rank-1, .tp-card.rank-2, .tp-card.rank-3 { order: unset !important; height: auto !important; min-height: 220px; }
 }
 /* ══ FIN TOP 3 PLAYERS ══════════════════════════════════════ */
+
+/* ══ MP TOKEN — Moneda de MiP HUB ══════════════════════════════════════════ */
+.mp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #1a0d2e 0%, #2d1060 50%, #1a0d2e 100%);
+  border: 1.5px solid transparent;
+  border-radius: 20px;
+  padding: 5px 12px 5px 5px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s, box-shadow 0.2s;
+  background-clip: padding-box;
+  box-shadow: 0 0 0 1.5px rgba(255,80,200,0.5), 0 0 16px rgba(140,50,255,0.3), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+.mp-badge::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.06) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: mpShimmer 2.5s linear infinite;
+  pointer-events: none;
+  border-radius: 20px;
+}
+@keyframes mpShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.mp-badge:hover {
+  transform: translateY(-1px) scale(1.04);
+  box-shadow: 0 0 0 1.5px rgba(255,80,200,0.8), 0 0 24px rgba(180,50,255,0.5), inset 0 1px 0 rgba(255,255,255,0.12);
+}
+.mp-badge:active { transform: scale(0.97); }
+.mp-coin {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: conic-gradient(#ff4db8 0deg,#a855f7 60deg,#00b4ff 120deg,#00e676 180deg,#ffca28 240deg,#ff4db8 300deg,#ff4db8 360deg);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fredoka One', cursive;
+  font-size: 9px; color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+  flex-shrink: 0;
+  animation: mpCoinSpin 6s linear infinite;
+  box-shadow: 0 0 8px rgba(255,80,180,0.6), inset 0 1px 0 rgba(255,255,255,0.3);
+  font-weight: 900;
+}
+@keyframes mpCoinSpin {
+  0%, 90%, 100% { filter: hue-rotate(0deg) brightness(1); }
+  45% { filter: hue-rotate(180deg) brightness(1.2); }
+}
+.mp-amount {
+  font-family: 'Fredoka One', cursive;
+  font-size: 14px; letter-spacing: 0.5px;
+  background: linear-gradient(90deg, #ff4db8, #a855f7, #00b4ff, #00e676, #ffca28, #ff4db8);
+  background-size: 300% 100%;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  animation: mpTextShimmer 3s linear infinite; font-weight: 900;
+}
+@keyframes mpTextShimmer {
+  0% { background-position: 0% 0; }
+  100% { background-position: 300% 0; }
+}
+.mp-label {
+  font-size: 9px; font-weight: 800;
+  color: rgba(255,255,255,0.4);
+  letter-spacing: 0.5px; text-transform: uppercase; margin-top: -1px;
+}
+.dp-mp-row { display:flex; align-items:center; gap:8px; position:relative; z-index:1; margin-top:2px; }
+.dp-mp-mini-coin {
+  width:16px; height:16px; border-radius:50%;
+  background: conic-gradient(#ff4db8 0deg,#a855f7 120deg,#00b4ff 240deg,#ff4db8 360deg);
+  display:flex; align-items:center; justify-content:center;
+  font-size:7px; color:#fff; font-family:'Fredoka One',cursive; font-weight:900;
+  flex-shrink:0; box-shadow:0 0 6px rgba(255,80,180,0.5);
+}
+.dp-mp-mini-amount {
+  font-family:'Fredoka One',cursive; font-size:11px;
+  background:linear-gradient(90deg,#ff4db8,#a855f7,#00b4ff);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+}
 </style>
 <body>
 
@@ -3311,12 +3393,12 @@ body::before {
   </div>
 
   <div class="topbar-actions">
-    <!-- MP Token badge -->
-    <div id="mpTokenBadge" title="Tus MiP Points" style="display:none;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;background:linear-gradient(135deg,rgba(255,202,40,0.15),rgba(255,109,0,0.1));border:1px solid rgba(255,202,40,0.3);cursor:default;user-select:none;">
-      <span style="font-size:16px;line-height:1;">🪙</span>
-      <div style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.1;">
-        <span id="mpTokenCount" style="font-size:13px;font-weight:900;color:#ffca28;letter-spacing:0.03em;">0</span>
-        <span style="font-size:9px;font-weight:700;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;">Tokens</span>
+    <!-- MP TOKEN BADGE -->
+    <div class="mp-badge" id="mpTokenBadge" onclick="openMpPanel()" title="Mis MP Tokens" style="display:none">
+      <div class="mp-coin">MP</div>
+      <div>
+        <div class="mp-amount" id="mpTokenCount">0</div>
+        <div class="mp-label">tokens</div>
       </div>
     </div>
     <div class="notif-btn" title="Notificaciones" id="notifBtn" onclick="toggleNotifPanel(event)">
@@ -6394,9 +6476,10 @@ applyProfileToUI();
 function updateMpBadge(balance) {
   const badge = document.getElementById('mpTokenBadge');
   const count = document.getElementById('mpTokenCount');
-  if (!badge || !count) return;
-  count.textContent = (balance ?? 0).toLocaleString('es');
-  badge.style.display = 'flex';
+  if (badge && count) {
+    count.textContent = (balance ?? 0).toLocaleString('es');
+    badge.style.display = 'flex';
+  }
 }
 
 /** Carga el mp_balance del perfil actual desde Supabase */
