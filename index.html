@@ -5146,9 +5146,20 @@ async function uploadGame() {
 // ══════════════════════════════════════════════
 //  PLAY — with loading screen
 // ══════════════════════════════════════════════
-function getGameUrl(id) {
+function getGameUrl(id, roomCode = null) {
   const game = games.find(g => g.id === id);
   if (!game) return null;
+
+  // Si hay roomCode, inyectamos window.MIP_ROOM_CODE en el HTML antes de crear el blob
+  if (roomCode && game.html) {
+    const injected = game.html.replace(
+      '<head>',
+      '<head><script>window.MIP_ROOM_CODE = ' + JSON.stringify(roomCode) + ';<\/script>'
+    );
+    const blob = new Blob([injected], { type: 'text/html' });
+    return URL.createObjectURL(blob);
+  }
+
   if (!blobStore[id] && game.html) {
     const blob = new Blob([game.html], { type: 'text/html' });
     blobStore[id] = URL.createObjectURL(blob);
@@ -5204,8 +5215,9 @@ async function playGame(id) {
   currentPlayingId = id;
   await saveGame(game);
 
-  // Publicar sesión activa (para que amigos puedan unirse)
-  publishActiveSession(game);
+  // Publicar sesión activa con room_code automático (para que amigos puedan unirse directamente)
+  const autoRoomCode = Math.random().toString(36).slice(2, 8).toUpperCase();
+  publishActiveSession(game, autoRoomCode);
 
   // Play MiP startup sound
   (function playMipSound() {
@@ -9561,15 +9573,51 @@ function _applySessionBadge(card, gameId, session) {
 async function joinFriendSession(gameId, roomCode) {
   const game = games.find(g => g.id === gameId);
   if (!game) { toast('Juego no encontrado', 'error'); return; }
-  await playGame(gameId);
-  if (roomCode) {
-    setTimeout(() => {
-      const frame = document.getElementById('playerFrame');
-      if (frame?.contentWindow) {
-        frame.contentWindow.postMessage({ type: 'JOIN_ROOM', roomCode }, '*');
-      }
-    }, 2800);
+
+  if (!currentUser) { toast('Iniciá sesión para unirte', 'error'); openAuthModal(); return; }
+
+  // Asegurarse de que el HTML del juego esté disponible
+  if (!blobStore[gameId] && !game.html) {
+    document.getElementById('loadingStatus').textContent = 'Descargando juego...';
+    const html = await fetchGameHtml(gameId);
+    if (!html) { toast('No se pudo cargar el juego', 'error'); return; }
+    game.html = html;
   }
+
+  // Mostrar pantalla de carga
+  document.getElementById('playerTitle').textContent = game.name;
+  document.getElementById('loadingGameName').textContent = game.name;
+  document.getElementById('loadingBarFill').style.width = '0%';
+  document.getElementById('loadingPct').textContent = '0%';
+  document.getElementById('loadingStatus').textContent = 'Uniéndote a la partida...';
+  document.getElementById('playerLoading').classList.remove('hidden');
+  document.getElementById('playerFrame').src = 'about:blank';
+  document.getElementById('playerOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  // Generar URL con room_code inyectado directamente en el HTML
+  const url = getGameUrl(gameId, roomCode || null);
+  if (!url) { toast('El juego no está disponible', 'error'); return; }
+
+  currentPlayingId = gameId;
+
+  // Simular barra de carga
+  let pct = 0;
+  const interval = setInterval(() => {
+    pct = Math.min(pct + Math.random() * 15 + 5, 100);
+    document.getElementById('loadingBarFill').style.width = pct + '%';
+    document.getElementById('loadingPct').textContent = Math.round(pct) + '%';
+    if (pct >= 100) {
+      clearInterval(interval);
+      setTimeout(() => {
+        document.getElementById('playerFrame').src = url;
+        setTimeout(() => document.getElementById('playerLoading').classList.add('hidden'), 500);
+      }, 300);
+    }
+  }, 120);
+
+  renderGridGames();
+  renderPopularRow();
 }
 
 function initActiveSessionsRealtime() {
