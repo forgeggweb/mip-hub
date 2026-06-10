@@ -9541,15 +9541,15 @@ function _applySessionBadge(card, gameId, session) {
         ${session.host_avatar_url
           ? `<img src="${escHtml(session.host_avatar_url)}" alt="">`
           : (session.host_avatar_emoji || '🎮')}
+        <div class="slb-dot"></div>
       </div>
-      <div class="slb-dot"></div>
       <div class="slb-info">
         <div class="slb-name">${safeHostName}</div>
-        <div class="slb-playing">▶ jugando ahora</div>
+        <div class="slb-playing">● jugando ahora</div>
       </div>
       <button class="slb-join-btn"
         onclick="event.stopPropagation();joinFriendSession('${safeGameId}','${safeRoomCode}')">
-        <span class="slb-join-icon">🎮</span> Unirse
+        ▶ Unirse
       </button>
     </div>`;
 
