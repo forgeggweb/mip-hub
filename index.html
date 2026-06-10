@@ -9369,19 +9369,18 @@ document.head.appendChild(_mpSpinStyle);
 (function() {
   const s = document.createElement('style');
   s.textContent = `
-/* ── Roblox-style "Join friend" banner ── */
+/* ── Roblox-style "Join friend" banner — DEBAJO de la card ── */
 .session-live-badge {
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  z-index: 5;
-  background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.82) 35%, rgba(0,12,6,0.97) 100%);
-  padding: 28px 10px 10px;
+  margin-top: 8px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(0,30,15,0.95) 0%, rgba(0,20,10,0.98) 100%);
+  border: 1px solid rgba(0,230,118,0.35);
+  padding: 8px 10px;
   animation: slbFadeIn 0.3s ease;
-  pointer-events: auto;
-  border-radius: 0 0 14px 14px;
+  box-shadow: 0 0 14px rgba(0,230,118,0.12);
 }
 @keyframes slbFadeIn {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 .slb-inner {
@@ -9391,30 +9390,33 @@ document.head.appendChild(_mpSpinStyle);
 }
 /* Avatar circular del amigo */
 .slb-avatar {
-  width: 30px; height: 30px;
+  width: 28px; height: 28px;
   border-radius: 50%;
   border: 2px solid var(--green);
-  background: #1a2a1a;
+  background: #0d1f0d;
   display: flex; align-items: center; justify-content: center;
-  font-size: 16px;
+  font-size: 14px;
   flex-shrink: 0;
-  box-shadow: 0 0 8px rgba(0,230,118,0.5);
+  box-shadow: 0 0 8px rgba(0,230,118,0.4);
   overflow: hidden;
+  position: relative;
 }
 .slb-avatar img { width: 100%; height: 100%; object-fit: cover; }
-/* Punto online pulsante */
+/* Punto online pulsante sobre el avatar */
 .slb-dot {
-  width: 7px; height: 7px;
+  position: absolute;
+  bottom: -1px; right: -1px;
+  width: 8px; height: 8px;
   border-radius: 50%;
   background: var(--green);
-  box-shadow: 0 0 8px var(--green);
+  border: 2px solid #0d1f0d;
+  box-shadow: 0 0 6px var(--green);
   animation: pulse 1.5s infinite;
-  flex-shrink: 0;
 }
 /* Info de texto */
 .slb-info { flex: 1; min-width: 0; }
 .slb-name {
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 800;
   color: #fff;
   white-space: nowrap;
@@ -9429,31 +9431,31 @@ document.head.appendChild(_mpSpinStyle);
   white-space: nowrap;
   letter-spacing: 0.2px;
 }
-/* Botón estilo Roblox: verde sólido, ancho completo, abajo */
+/* Botón estilo Roblox */
 .slb-join-btn {
   background: linear-gradient(135deg, #00c853 0%, #00e676 100%);
   border: none;
-  border-radius: 7px;
+  border-radius: 8px;
   color: #000;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 900;
-  padding: 6px 12px;
+  padding: 7px 14px;
   cursor: pointer;
   font-family: 'Nunito', sans-serif;
   transition: filter 0.15s, transform 0.12s, box-shadow 0.15s;
   flex-shrink: 0;
   white-space: nowrap;
-  display: flex; align-items: center; gap: 4px;
-  box-shadow: 0 2px 10px rgba(0,230,118,0.35);
+  display: flex; align-items: center; gap: 5px;
+  box-shadow: 0 2px 10px rgba(0,230,118,0.4);
   letter-spacing: 0.3px;
 }
 .slb-join-btn:hover {
   filter: brightness(1.1);
   transform: scale(1.05);
-  box-shadow: 0 4px 16px rgba(0,230,118,0.55);
+  box-shadow: 0 4px 18px rgba(0,230,118,0.6);
 }
 .slb-join-btn:active { transform: scale(0.97); }
-.slb-join-icon { font-size: 12px; }
+.slb-join-icon { font-size: 13px; }
   `;
   document.head.appendChild(s);
 })();
@@ -9513,7 +9515,7 @@ function _refreshSessionBadges() {
 }
 
 function _applySessionBadge(card, gameId, session) {
-  card.querySelector('.session-live-badge')?.remove();
+  card.querySelectorAll('.session-live-badge').forEach(el => el.remove());
   if (!session) return;
 
   // No mostrar si soy yo el que está jugando
@@ -9551,8 +9553,9 @@ function _applySessionBadge(card, gameId, session) {
       </button>
     </div>`;
 
-  const thumb = card.querySelector('.card-thumb');
-  if (thumb) thumb.appendChild(badge);
+  // Insertar en card-info (debajo de la info, no sobre la imagen)
+  const info = card.querySelector('.card-info');
+  if (info) info.appendChild(badge);
 }
 
 async function joinFriendSession(gameId, roomCode) {
