@@ -5150,11 +5150,25 @@ function getGameUrl(id, roomCode = null) {
   const game = games.find(g => g.id === id);
   if (!game) return null;
 
-  // Si hay roomCode, inyectamos window.MIP_ROOM_CODE en el HTML antes de crear el blob
+  // Inyectar roomCode + perfil del usuario actual en el HTML del juego
+  const _injectProfile = {
+    username:   profile?.username   || '',
+    avatarUrl:  profile?.avatarUrl  || profile?.avatar_url || null,
+    avatarEmoji:profile?.avatarEmoji|| '🎮',
+  };
   if (roomCode && game.html) {
     const injected = game.html.replace(
       '<head>',
-      '<head><script>window.MIP_ROOM_CODE = ' + JSON.stringify(roomCode) + ';<\/script>'
+      '<head><script>window.MIP_ROOM_CODE = ' + JSON.stringify(roomCode) + '; window.MIP_PROFILE = ' + JSON.stringify(_injectProfile) + ';<\/script>'
+    );
+    const blob = new Blob([injected], { type: 'text/html' });
+    return URL.createObjectURL(blob);
+  }
+  // Sin roomCode pero igual inyectamos el perfil
+  if (game.html) {
+    const injected = game.html.replace(
+      '<head>',
+      '<head><script>window.MIP_PROFILE = ' + JSON.stringify(_injectProfile) + ';<\/script>'
     );
     const blob = new Blob([injected], { type: 'text/html' });
     return URL.createObjectURL(blob);
