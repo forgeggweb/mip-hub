@@ -4981,6 +4981,9 @@ function renderCardsInto(container, list, scroll = false, emptyMsg = '', emptyAc
     if (!g.thumbnail) {
       requestAnimationFrame(() => drawThumb(g, document.getElementById('thumb-' + g.id)));
     }
+    // Aplicar badge de sesión activa si corresponde
+    const session = _activeSessions[g.id];
+    if (session) _applySessionBadge(card, g.id, session);
   });
 }
 
@@ -5201,6 +5204,9 @@ async function playGame(id) {
   currentPlayingId = id;
   await saveGame(game);
 
+  // Publicar sesión activa (para que amigos puedan unirse)
+  publishActiveSession(game);
+
   // Play MiP startup sound
   (function playMipSound() {
     try {
@@ -5337,6 +5343,7 @@ function closePlayer() {
   document.getElementById('playerFrame').src = 'about:blank';
   document.body.style.overflow = '';
   currentPlayingId = null;
+  clearActiveSession();
 }
 
 function toggleFullscreen() {
@@ -9355,6 +9362,190 @@ async function _postSendSuccess(amount, recipientName, message) {
 const _mpSpinStyle = document.createElement('style');
 _mpSpinStyle.textContent = '@keyframes mpSpin { to { transform: rotate(360deg); } }';
 document.head.appendChild(_mpSpinStyle);
+
+// ══════════════════════════════════════════════
+//  CSS — SESSION LIVE BADGE
+// ══════════════════════════════════════════════
+(function() {
+  const s = document.createElement('style');
+  s.textContent = `
+.session-live-badge {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  z-index: 5;
+  padding: 5px 7px;
+  background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.92) 100%);
+  animation: fadeInUp 0.3s ease;
+  pointer-events: auto;
+}
+.slb-inner {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.slb-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  animation: pulse 1.5s infinite;
+  flex-shrink: 0;
+}
+.slb-name {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--green);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70px;
+}
+.slb-playing {
+  font-size: 10px;
+  color: rgba(255,255,255,0.55);
+  font-weight: 600;
+  white-space: nowrap;
+  flex: 1;
+}
+.slb-join-btn {
+  background: var(--green);
+  border: none;
+  border-radius: 5px;
+  color: #000;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-family: 'Nunito', sans-serif;
+  transition: filter 0.15s, transform 0.15s;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.slb-join-btn:hover { filter: brightness(1.15); transform: scale(1.06); }
+  `;
+  document.head.appendChild(s);
+})();
+
+// ══════════════════════════════════════════════
+//  ACTIVE SESSIONS — Roblox-style "Join friend"
+// ══════════════════════════════════════════════
+let _currentSessionId = null;
+
+async function publishActiveSession(game, roomCode = null) {
+  if (!currentUser) return;
+  await clearActiveSession();
+  try {
+    const { data, error } = await sb.from('active_sessions').insert({
+      game_id:           game.id,
+      host_user_id:      currentUser.id,
+      host_name:         profile.username || 'Jugador',
+      host_avatar_emoji: profile.avatarEmoji || '🎮',
+      host_avatar_url:   profile.avatarUrl || null,
+      room_code:         roomCode || null,
+      player_count:      1,
+    }).select().single();
+    if (!error && data) _currentSessionId = data.id;
+  } catch(e) { console.warn('[session] publishActiveSession error:', e); }
+}
+
+async function clearActiveSession() {
+  if (!currentUser) return;
+  try {
+    await sb.from('active_sessions').delete().eq('host_user_id', currentUser.id);
+  } catch(e) {}
+  _currentSessionId = null;
+}
+
+// Limpiar al cerrar la pestaña/ventana
+window.addEventListener('beforeunload', () => { clearActiveSession(); });
+
+// ── Display ────────────────────────────────────────────────
+let _activeSessions = {}; // { [gameId]: session }
+let _activeSessionsChannel = null;
+
+async function loadActiveSessions() {
+  try {
+    const { data } = await sb.from('active_sessions').select('*');
+    _activeSessions = {};
+    (data || []).forEach(s => { _activeSessions[s.game_id] = s; });
+    _refreshSessionBadges();
+  } catch(e) {}
+}
+
+function _refreshSessionBadges() {
+  document.querySelectorAll('.game-card[data-id]').forEach(card => {
+    const gameId = card.dataset.id;
+    const session = _activeSessions[gameId];
+    _applySessionBadge(card, gameId, session);
+  });
+}
+
+function _applySessionBadge(card, gameId, session) {
+  card.querySelector('.session-live-badge')?.remove();
+  if (!session) return;
+
+  // No mostrar si soy yo el que está jugando
+  if (currentUser && session.host_user_id === currentUser.id) return;
+
+  // Mostrar solo para amigos (para estilo abierto Roblox, eliminá este bloque)
+  const isMyFriend = _friendships.some(f =>
+    f.status === 'accepted' && (
+      (f.sender_id   === currentUser?.id && f.receiver_id === session.host_user_id) ||
+      (f.receiver_id === currentUser?.id && f.sender_id   === session.host_user_id)
+    )
+  );
+  if (currentUser && !isMyFriend) return;
+
+  const badge = document.createElement('div');
+  badge.className = 'session-live-badge';
+  const safeHostName = escHtml(session.host_name || 'Alguien');
+  const safeGameId   = escHtml(gameId);
+  const safeRoomCode = escHtml(session.room_code || '');
+  badge.innerHTML = `
+    <div class="slb-inner">
+      <div class="slb-dot"></div>
+      <span class="slb-name">${safeHostName}</span>
+      <span class="slb-playing">jugando</span>
+      <button class="slb-join-btn"
+        onclick="event.stopPropagation();joinFriendSession('${safeGameId}','${safeRoomCode}')">
+        Unirse ▶
+      </button>
+    </div>`;
+
+  const thumb = card.querySelector('.card-thumb');
+  if (thumb) thumb.appendChild(badge);
+}
+
+async function joinFriendSession(gameId, roomCode) {
+  const game = games.find(g => g.id === gameId);
+  if (!game) { toast('Juego no encontrado', 'error'); return; }
+  await playGame(gameId);
+  if (roomCode) {
+    setTimeout(() => {
+      const frame = document.getElementById('playerFrame');
+      if (frame?.contentWindow) {
+        frame.contentWindow.postMessage({ type: 'JOIN_ROOM', roomCode }, '*');
+      }
+    }, 2800);
+  }
+}
+
+function initActiveSessionsRealtime() {
+  if (_activeSessionsChannel) return;
+  try {
+    _activeSessionsChannel = sb.channel('active_sessions_live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'active_sessions' }, () => {
+        loadActiveSessions();
+      })
+      .subscribe();
+  } catch(e) {}
+}
+
+// Arrancar después de que Supabase y amigos estén listos
+setTimeout(() => {
+  loadActiveSessions();
+  initActiveSessionsRealtime();
+}, 3500);
 </script>
 
 </body>
